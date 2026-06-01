@@ -6,8 +6,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#EC4899">
-  <link rel="manifest" href="./manifest.json">
-  <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <title>今天吃啥呀？</title>
   <style>
 /* ============ 全局 ============ */
@@ -2482,16 +2480,6 @@ if (document.readyState === 'loading') {
   boot();
 }
 
-
-
-// PWA: 注册 service worker
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').then(function() {
-    console.log('SW registered');
-  }).catch(function() {
-    console.log('SW registration failed');
-  });
-}
 
 </script>
 </body>
