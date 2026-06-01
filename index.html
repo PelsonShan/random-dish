@@ -12,14 +12,13 @@
 </head>
 <body>
   <div id="app">
-    <!-- 导航栏 -->
     <div id="nav-bar">
       <button id="back-btn">‹ 返回</button>
       <span id="nav-title">今天吃啥呀？</span>
       <span style="width:40px;"></span>
     </div>
 
-    <!-- 首页 - 今天吃啥呀？ -->
+    <!-- 首页 - 随机开饭 -->
     <div class="page-container" id="page-index">
       <div class="header">
         <span class="title">今天吃什么？</span>
@@ -29,12 +28,10 @@
       <div id="source-selector"></div>
       <div id="combo-bar"></div>
       <div id="result-area"></div>
-      <div id="history-area"></div>
 
-      <button class="btn-random" id="btn-random">🎲 今天吃啥呀？</button>
-      <div class="family-entry">
-        <button class="btn-family-entry" id="index-family-btn">👨‍👩‍👧 家庭共享</button>
-      </div>
+      <button class="btn-random" id="btn-random">🎲 吃啥呀</button>
+
+      <div id="history-area"></div>
     </div>
 
     <!-- 菜品管理 -->
@@ -44,17 +41,11 @@
         <div class="hot-filter-row" id="manage-hot-filter"></div>
         <div class="popular-scroll-row" id="manage-hot-list"></div>
       </div>
-
       <div class="add-bar">
         <button class="btn-add" id="manage-add-btn">+ 自定义菜品</button>
       </div>
-
       <div id="manage-form"></div>
       <div id="manage-dish-list"></div>
-
-      <div class="family-entry" style="margin-top:20px;">
-        <button class="btn-family-entry" id="manage-family-btn">👨‍👩‍👧 家庭共享</button>
-      </div>
     </div>
 
     <!-- 家庭列表 -->
@@ -66,19 +57,17 @@
     <!-- Tab Bar -->
     <div id="tab-bar">
       <button class="tab-item active" data-tab="0">
-        <span class="tab-icon">🎲</span>
-        <span>今天吃啥呀？</span>
+        <span class="tab-icon">🎲</span><span>吃啥呀</span>
       </button>
       <button class="tab-item" data-tab="1">
-        <span class="tab-icon">📋</span>
-        <span>菜品管理</span>
+        <span class="tab-icon">📋</span><span>菜品管理</span>
+      </button>
+      <button class="tab-item" data-tab="2">
+        <span class="tab-icon">👨‍👩‍👧</span><span>家庭共享</span>
       </button>
     </div>
 
-    <!-- Toast -->
     <div id="toast"></div>
-
-    <!-- Modal -->
     <div id="modal-overlay">
       <div id="modal-box">
         <span id="modal-title"></span>
@@ -89,8 +78,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Loading -->
     <div id="loading-overlay">
       <div class="loading-box">
         <div class="loading-spinner"></div>
@@ -98,7 +85,6 @@
       </div>
     </div>
   </div>
-
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

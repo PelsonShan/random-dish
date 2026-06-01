@@ -1,19 +1,19 @@
 // 主应用 — 路由、页面切换
 
-let currentPage = '';
-let currentParams = {};
+var currentPage = '';
+var currentParams = {};
 
-const PAGES = {
+var PAGES = {
   index:    { init: initIndexPage,    tab: 0 },
   manage:   { init: initManagePage,   tab: 1 },
-  family:   { init: initFamilyPage,   tab: -1 },
+  family:   { init: initFamilyPage,   tab: 2 },
   'family-detail': { init: initFamilyDetailPage, tab: -1 },
 };
 
 function initDefaultDishes() {
-  const stored = getMyDishes();
+  var stored = getMyDishes();
   if (!stored || stored.length === 0) {
-    const dishes = DEFAULT_DISHES.map(function(d, i) { return Object.assign({}, d, { id: i + 1 }); });
+    var dishes = DEFAULT_DISHES.map(function(d, i) { return Object.assign({}, d, { id: i + 1 }); });
     saveMyDishes(dishes);
   }
 }
@@ -36,32 +36,25 @@ function navigateTo(page, params) {
   var fam = document.getElementById('page-family');
   var famd = document.getElementById('page-family-detail');
 
-  if (idx) idx.style.display = page === 'index' ? '' : 'none';
-  if (mgr) mgr.style.display = page === 'manage' ? '' : 'none';
-  if (fam) fam.style.display = page === 'family' ? '' : 'none';
-  if (famd) famd.style.display = page === 'family-detail' ? '' : 'none';
+  if (idx) idx.style.display = page === 'index' ? 'flex' : 'none';
+  if (mgr) mgr.style.display = page === 'manage' ? 'flex' : 'none';
+  if (fam) fam.style.display = page === 'family' ? 'flex' : 'none';
+  if (famd) famd.style.display = page === 'family-detail' ? 'flex' : 'none';
 
   var tabBar = document.getElementById('tab-bar');
-  if (tabBar) tabBar.style.display = (page === 'family' || page === 'family-detail') ? 'none' : '';
+  if (tabBar) tabBar.style.display = (page === 'family-detail') ? 'none' : '';
 
   var backBtn = document.getElementById('back-btn');
-  if (backBtn) backBtn.style.display = (page === 'family-detail') ? '' : 'none';
+  if (backBtn) backBtn.style.display = (page === 'family-detail') ? 'block' : 'none';
 
-  if (page === 'family-detail') {
-    document.title = params.familyName || '家庭详情';
-  } else {
-    document.title = '今天吃啥呀？';
-  }
+  document.title = page === 'family-detail' ? (params.familyName || '家庭详情') : '今天吃啥呀？';
 
   route.init(params);
 }
 
 function navigateBack() {
-  if (currentPage === 'family-detail') {
-    navigateTo('family');
-  } else {
-    navigateTo('index');
-  }
+  if (currentPage === 'family-detail') { navigateTo('family'); }
+  else { navigateTo('index'); }
 }
 
 function handleHashChange() {
@@ -84,9 +77,8 @@ function setupGlobalEvents() {
     tabBar.addEventListener('click', function(e) {
       var tab = e.target.closest('.tab-item');
       if (!tab) return;
-      var idx = parseInt(tab.dataset.tab);
-      var pages = ['index', 'manage'];
-      navigateTo(pages[idx]);
+      var pages = ['index', 'manage', 'family'];
+      navigateTo(pages[parseInt(tab.dataset.tab)]);
     });
   }
 
@@ -99,19 +91,12 @@ function setupGlobalEvents() {
       if (!this.classList.contains('show')) this.textContent = '';
     });
   }
-
-  var idxFamBtn = document.getElementById('index-family-btn');
-  if (idxFamBtn) idxFamBtn.addEventListener('click', function() { navigateTo('family'); });
-
-  var mgrFamBtn = document.getElementById('manage-family-btn');
-  if (mgrFamBtn) mgrFamBtn.addEventListener('click', function() { navigateTo('family'); });
 }
 
 // 启动
 initDefaultDishes();
 window.addEventListener('hashchange', handleHashChange);
 
-// 确保在 DOM 准备好后初始化
 function boot() {
   setupGlobalEvents();
   handleHashChange();

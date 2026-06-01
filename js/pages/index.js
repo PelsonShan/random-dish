@@ -1,4 +1,4 @@
-// 随机开饭页面 - 使用 index_* 前缀避免命名冲突
+// 随机开饭页面
 
 var indexState = {
   currentDishes: [],
@@ -9,7 +9,8 @@ var indexState = {
   families: [],
   familyDishes: {},
   familyLabel: '个人菜单',
-  spinningTimer: null
+  spinningTimer: null,
+  historyExpanded: false
 };
 
 var INDEX_COMBOS = [
@@ -23,26 +24,17 @@ var INDEX_COMBOS = [
 function indexGetDishes() {
   if (indexState.source === 'personal') {
     var dishes = getMyDishes();
-    if (!dishes || !dishes.length) {
-      dishes = DEFAULT_DISHES;
-      saveMyDishes(dishes);
-    }
+    if (!dishes || !dishes.length) { dishes = DEFAULT_DISHES; saveMyDishes(dishes); }
     return dishes;
   }
   return indexState.familyDishes[indexState.source] || [];
 }
 
 function indexSwitchSource(source) {
-  if (source === 'personal') {
-    indexState.source = 'personal';
-    indexState.familyLabel = '个人菜单';
-    indexRender();
-    return;
-  }
+  if (source === 'personal') { indexState.source = 'personal'; indexState.familyLabel = '个人菜单'; indexRender(); return; }
   var family = indexState.families.find(function(f) { return f._id === source; });
   indexState.source = source;
   indexState.familyLabel = family ? '🏠 ' + family.name : '';
-
   if (!indexState.familyDishes[source]) {
     var allDishes = getCollection('family_dishes');
     indexState.familyDishes[source] = allDishes.filter(function(d) { return d.familyId === source; });
@@ -52,10 +44,7 @@ function indexSwitchSource(source) {
 
 function indexRandomDish() {
   var dishes = indexGetDishes();
-  if (!dishes || !dishes.length) {
-    showToast('当前菜单没有菜品', 'none');
-    return;
-  }
+  if (!dishes || !dishes.length) { showToast('当前菜单没有菜品', 'none'); return; }
   if (indexState.spinning) return;
   indexState.spinning = true;
   indexRenderSpinningBtn(true);
@@ -63,23 +52,17 @@ function indexRandomDish() {
   var combo = INDEX_COMBOS.find(function(c) { return c.key === indexState.combo; });
   var dishPool = dishes.filter(function(d) { return d.category !== 'soup'; });
   var soupPool = dishes.filter(function(d) { return d.category === 'soup'; });
-
   var availableDishCount = Math.min(combo.dishes, dishPool.length);
   var availableSoupCount = Math.min(combo.soups, soupPool.length);
 
   if (availableDishCount === 0 && availableSoupCount === 0) {
-    indexState.spinning = false;
-    indexRenderSpinningBtn(false);
-    showToast('菜品数量不足', 'none');
-    return;
+    indexState.spinning = false; indexRenderSpinningBtn(false); showToast('菜品数量不足', 'none'); return;
   }
 
   var targetDishes = pickRandom(dishPool, availableDishCount);
   var targetSoups = availableSoupCount > 0 ? pickRandom(soupPool, availableSoupCount) : [];
   var target = targetDishes.concat(targetSoups);
-
-  var count = 0;
-  var maxCount = 12;
+  var count = 0, maxCount = 12;
 
   function spin() {
     var animD = pickRandom(dishPool, availableDishCount);
@@ -87,33 +70,22 @@ function indexRandomDish() {
     indexState.currentDishes = animD.concat(animS);
     indexRenderResult();
     count++;
-    if (count >= maxCount) {
-      indexFinalizePick(target, combo);
-    } else {
-      indexState.spinningTimer = setTimeout(spin, 80 + count * 20);
-    }
+    if (count >= maxCount) { indexFinalizePick(target, combo); }
+    else { indexState.spinningTimer = setTimeout(spin, 80 + count * 20); }
   }
   spin();
 }
 
 function indexFinalizePick(dishes, combo) {
   indexState.currentDishes = dishes;
-  var record = {
-    comboLabel: combo.label,
-    sourceLabel: indexState.familyLabel,
-    dishes: dishes.map(function(d) { return { name: d.name, emoji: d.emoji }; }),
-    time: Date.now()
-  };
-  indexState.history = [record].concat(indexState.history).slice(0, 12);
+  var record = { comboLabel: combo.label, sourceLabel: indexState.familyLabel, dishes: dishes.map(function(d) { return { name: d.name, emoji: d.emoji }; }), time: Date.now() };
+  indexState.history = [record].concat(indexState.history).slice(0, 20);
   indexState.spinning = false;
   indexRender();
   vibrate(50);
 }
 
-function indexSetCombo(combo) {
-  indexState.combo = combo;
-  indexRenderComboBar();
-}
+function indexSetCombo(combo) { indexState.combo = combo; indexRenderComboBar(); }
 
 function indexRender() {
   indexRenderComboBar();
@@ -126,18 +98,14 @@ function indexRender() {
 function indexRenderComboBar() {
   var el = document.getElementById('combo-bar');
   if (!el) return;
-  el.innerHTML = INDEX_COMBOS.map(function(c) {
-    return '<button class="combo-seg ' + (indexState.combo === c.key ? 'active' : '') + '" data-combo="' + c.key + '">' + c.label + '</button>';
-  }).join('');
+  el.innerHTML = INDEX_COMBOS.map(function(c) { return '<button class="combo-seg ' + (indexState.combo === c.key ? 'active' : '') + '" data-combo="' + c.key + '">' + c.label + '</button>'; }).join('');
 }
 
 function indexRenderSourceSelector() {
   var el = document.getElementById('source-selector');
   if (!el) return;
   var html = '<button class="source-btn ' + (indexState.source === 'personal' ? 'active' : '') + '" data-source="personal">👤 个人菜单</button>';
-  indexState.families.forEach(function(f) {
-    html += '<button class="source-btn ' + (indexState.source === f._id ? 'active' : '') + '" data-source="' + f._id + '">🏠 ' + f.name + '</button>';
-  });
+  indexState.families.forEach(function(f) { html += '<button class="source-btn ' + (indexState.source === f._id ? 'active' : '') + '" data-source="' + f._id + '">🏠 ' + f.name + '</button>'; });
   el.innerHTML = html;
 }
 
@@ -146,23 +114,15 @@ function indexRenderResult() {
   if (!el) return;
   var dishes = indexState.currentDishes;
   var spinning = indexState.spinning;
-
-  if (!dishes.length) {
-    el.innerHTML = '<div class="single-area"><div class="single-card placeholder"><span class="single-emoji">🍽️</span><span class="single-name">点击按钮开始</span></div></div>';
-    return;
-  }
+  if (!dishes.length) { el.innerHTML = '<div class="single-area"><div class="single-card placeholder"><span class="single-emoji">🍽️</span><span class="single-name">点击按钮开始</span></div></div>'; return; }
   if (dishes.length === 1) {
     var d = dishes[0];
-    el.innerHTML = '<div class="single-area ' + (spinning ? 'spinning' : '') + '"><div class="single-card">' +
-      (d.image ? '<img class="single-img" src="' + d.image + '" />' : '<span class="single-emoji">' + d.emoji + '</span>') +
-      '<span class="single-name">' + d.name + '</span></div></div>';
+    el.innerHTML = '<div class="single-area ' + (spinning ? 'spinning' : '') + '"><div class="single-card">' + (d.image ? '<img class="single-img" src="' + d.image + '" />' : '<span class="single-emoji">' + d.emoji + '</span>') + '<span class="single-name">' + d.name + '</span></div></div>';
   } else {
-    var cards = dishes.map(function(d) {
-      return '<div class="multi-card">' +
-        (d.image ? '<img class="multi-img" src="' + d.image + '" />' : '<span class="multi-emoji">' + d.emoji + '</span>') +
-        '<span class="multi-name">' + d.name + '</span></div>';
-    }).join('');
-    el.innerHTML = '<div class="multi-area ' + (spinning ? 'spinning' : '') + '">' + cards + '</div>';
+    var cards = dishes.map(function(d) { return '<div class="multi-card">' + (d.image ? '<img class="multi-img" src="' + d.image + '" />' : '<span class="multi-emoji">' + d.emoji + '</span>') + '<span class="multi-name">' + d.name + '</span></div>'; }).join('');
+    var gridCls = dishes.length >= 4 ? ' grid-2x2' : '';
+    var spinCls = spinning ? ' spinning' : '';
+    el.innerHTML = '<div class="multi-area' + gridCls + spinCls + '">' + cards + '</div>';
   }
 }
 
@@ -170,13 +130,26 @@ function indexRenderHistory() {
   var el = document.getElementById('history-area');
   if (!el) return;
   if (!indexState.history.length) { el.innerHTML = ''; return; }
-  var items = indexState.history.map(function(h) {
+
+  var showCount = indexState.historyExpanded ? 20 : 5;
+  var visible = indexState.history.slice(0, showCount);
+  var hasMore = indexState.history.length > 5;
+
+  var items = visible.map(function(h) {
     return '<div class="history-item"><span class="history-combo">' + h.comboLabel + '</span>' +
       (h.sourceLabel && h.sourceLabel !== '个人菜单' ? '<span class="history-source">' + h.sourceLabel + '</span>' : '') +
       h.dishes.map(function(d) { return '<span class="history-name">' + d.emoji + d.name + '</span>'; }).join('') +
       '</div>';
   }).join('');
-  el.innerHTML = '<span class="history-title">最近抽取</span><div class="history-list">' + items + '</div>';
+
+  var toggleHtml = '';
+  if (hasMore) {
+    toggleHtml = indexState.historyExpanded
+      ? '<button class="history-toggle" id="history-toggle">收起</button>'
+      : '<button class="history-toggle" id="history-toggle">查看全部 (' + indexState.history.length + ' 条)</button>';
+  }
+
+  el.innerHTML = '<span class="history-title">最近抽取</span><div class="history-list">' + items + '</div>' + toggleHtml;
 }
 
 function indexRenderSpinningBtn(spinning) {
@@ -184,15 +157,12 @@ function indexRenderSpinningBtn(spinning) {
   if (!el) return;
   el.disabled = spinning;
   el.classList.toggle('pressing', spinning);
-  el.innerHTML = spinning ? '挑选中...' : '🎲 随机开饭';
+  el.innerHTML = spinning ? '挑选中...' : '🎲 吃啥呀';
 }
 
 function indexLoadFamilies() {
-  try {
-    indexState.families = getUserFamilies();
-  } catch (e) {
-    indexState.families = [];
-  }
+  try { indexState.families = getUserFamilies(); }
+  catch (e) { indexState.families = []; }
 }
 
 function indexSetupEvents() {
@@ -205,6 +175,12 @@ function indexSetupEvents() {
     var btn = e.target.closest('.source-btn');
     if (btn) indexSwitchSource(btn.dataset.source);
   });
+  document.getElementById('history-area').addEventListener('click', function(e) {
+    if (e.target.closest('#history-toggle')) {
+      indexState.historyExpanded = !indexState.historyExpanded;
+      indexRenderHistory();
+    }
+  });
 }
 
 function initIndexPage() {
@@ -213,6 +189,4 @@ function initIndexPage() {
   indexSetupEvents();
 }
 
-function refreshIndexFamilies() {
-  indexLoadFamilies();
-}
+function refreshIndexFamilies() { indexLoadFamilies(); }

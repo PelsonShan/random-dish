@@ -1023,19 +1023,110 @@ body {
   color: var(--pink);
 }
 
+/* ============ 历史记录增强 ============ */
+.history {
+  margin-top: 20px;
+  padding: 0;
+}
+.history-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-light-purple);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.history-title::before {
+  content: '📜';
+  font-size: 16px;
+}
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: var(--card-shadow);
+  flex-wrap: wrap;
+}
+.history-combo {
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  padding: 4px 12px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.history-source {
+  font-size: 12px;
+  color: var(--purple);
+  font-weight: 600;
+  background: #F5F3FF;
+  padding: 3px 10px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.history-name {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 600;
+  padding: 3px 0;
+}
+
+/* ============ 历史展开按钮 ============ */
+.history-toggle {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  background: none;
+  border: 1.5px dashed rgba(139,92,246,0.3);
+  border-radius: 12px;
+  color: var(--purple);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s;
+}
+.history-toggle:active {
+  background: rgba(139,92,246,0.06);
+}
+
+/* ============ 三菜一汤 2x2 网格 ============ */
+.multi-area.grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 0;
+}
+.multi-area.grid-2x2 .multi-card {
+  min-width: auto;
+}
+.multi-area.grid-2x2.spinning {
+  animation: shake 0.15s infinite;
+}
+
 </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
 </head>
 <body>
   <div id="app">
-    <!-- 导航栏 -->
     <div id="nav-bar">
       <button id="back-btn">‹ 返回</button>
       <span id="nav-title">今天吃啥呀？</span>
       <span style="width:40px;"></span>
     </div>
 
-    <!-- 首页 - 今天吃啥呀？ -->
+    <!-- 首页 - 随机开饭 -->
     <div class="page-container" id="page-index">
       <div class="header">
         <span class="title">今天吃什么？</span>
@@ -1045,12 +1136,10 @@ body {
       <div id="source-selector"></div>
       <div id="combo-bar"></div>
       <div id="result-area"></div>
-      <div id="history-area"></div>
 
-      <button class="btn-random" id="btn-random">🎲 今天吃啥呀？</button>
-      <div class="family-entry">
-        <button class="btn-family-entry" id="index-family-btn">👨‍👩‍👧 家庭共享</button>
-      </div>
+      <button class="btn-random" id="btn-random">🎲 吃啥呀</button>
+
+      <div id="history-area"></div>
     </div>
 
     <!-- 菜品管理 -->
@@ -1060,17 +1149,11 @@ body {
         <div class="hot-filter-row" id="manage-hot-filter"></div>
         <div class="popular-scroll-row" id="manage-hot-list"></div>
       </div>
-
       <div class="add-bar">
         <button class="btn-add" id="manage-add-btn">+ 自定义菜品</button>
       </div>
-
       <div id="manage-form"></div>
       <div id="manage-dish-list"></div>
-
-      <div class="family-entry" style="margin-top:20px;">
-        <button class="btn-family-entry" id="manage-family-btn">👨‍👩‍👧 家庭共享</button>
-      </div>
     </div>
 
     <!-- 家庭列表 -->
@@ -1082,19 +1165,17 @@ body {
     <!-- Tab Bar -->
     <div id="tab-bar">
       <button class="tab-item active" data-tab="0">
-        <span class="tab-icon">🎲</span>
-        <span>今天吃啥呀？</span>
+        <span class="tab-icon">🎲</span><span>吃啥呀</span>
       </button>
       <button class="tab-item" data-tab="1">
-        <span class="tab-icon">📋</span>
-        <span>菜品管理</span>
+        <span class="tab-icon">📋</span><span>菜品管理</span>
+      </button>
+      <button class="tab-item" data-tab="2">
+        <span class="tab-icon">👨‍👩‍👧</span><span>家庭共享</span>
       </button>
     </div>
 
-    <!-- Toast -->
     <div id="toast"></div>
-
-    <!-- Modal -->
     <div id="modal-overlay">
       <div id="modal-box">
         <span id="modal-title"></span>
@@ -1105,8 +1186,6 @@ body {
         </div>
       </div>
     </div>
-
-    <!-- Loading -->
     <div id="loading-overlay">
       <div class="loading-box">
         <div class="loading-spinner"></div>
@@ -1114,7 +1193,6 @@ body {
       </div>
     </div>
   </div>
-
   <script>
 
 // --- js/data.js ---
@@ -1547,7 +1625,7 @@ function generateInviteCode(familyId) {
 
 
 // --- js/pages/index.js ---
-// 随机开饭页面 - 使用 index_* 前缀避免命名冲突
+// 随机开饭页面
 
 var indexState = {
   currentDishes: [],
@@ -1558,7 +1636,8 @@ var indexState = {
   families: [],
   familyDishes: {},
   familyLabel: '个人菜单',
-  spinningTimer: null
+  spinningTimer: null,
+  historyExpanded: false
 };
 
 var INDEX_COMBOS = [
@@ -1572,26 +1651,17 @@ var INDEX_COMBOS = [
 function indexGetDishes() {
   if (indexState.source === 'personal') {
     var dishes = getMyDishes();
-    if (!dishes || !dishes.length) {
-      dishes = DEFAULT_DISHES;
-      saveMyDishes(dishes);
-    }
+    if (!dishes || !dishes.length) { dishes = DEFAULT_DISHES; saveMyDishes(dishes); }
     return dishes;
   }
   return indexState.familyDishes[indexState.source] || [];
 }
 
 function indexSwitchSource(source) {
-  if (source === 'personal') {
-    indexState.source = 'personal';
-    indexState.familyLabel = '个人菜单';
-    indexRender();
-    return;
-  }
+  if (source === 'personal') { indexState.source = 'personal'; indexState.familyLabel = '个人菜单'; indexRender(); return; }
   var family = indexState.families.find(function(f) { return f._id === source; });
   indexState.source = source;
   indexState.familyLabel = family ? '🏠 ' + family.name : '';
-
   if (!indexState.familyDishes[source]) {
     var allDishes = getCollection('family_dishes');
     indexState.familyDishes[source] = allDishes.filter(function(d) { return d.familyId === source; });
@@ -1601,10 +1671,7 @@ function indexSwitchSource(source) {
 
 function indexRandomDish() {
   var dishes = indexGetDishes();
-  if (!dishes || !dishes.length) {
-    showToast('当前菜单没有菜品', 'none');
-    return;
-  }
+  if (!dishes || !dishes.length) { showToast('当前菜单没有菜品', 'none'); return; }
   if (indexState.spinning) return;
   indexState.spinning = true;
   indexRenderSpinningBtn(true);
@@ -1612,23 +1679,17 @@ function indexRandomDish() {
   var combo = INDEX_COMBOS.find(function(c) { return c.key === indexState.combo; });
   var dishPool = dishes.filter(function(d) { return d.category !== 'soup'; });
   var soupPool = dishes.filter(function(d) { return d.category === 'soup'; });
-
   var availableDishCount = Math.min(combo.dishes, dishPool.length);
   var availableSoupCount = Math.min(combo.soups, soupPool.length);
 
   if (availableDishCount === 0 && availableSoupCount === 0) {
-    indexState.spinning = false;
-    indexRenderSpinningBtn(false);
-    showToast('菜品数量不足', 'none');
-    return;
+    indexState.spinning = false; indexRenderSpinningBtn(false); showToast('菜品数量不足', 'none'); return;
   }
 
   var targetDishes = pickRandom(dishPool, availableDishCount);
   var targetSoups = availableSoupCount > 0 ? pickRandom(soupPool, availableSoupCount) : [];
   var target = targetDishes.concat(targetSoups);
-
-  var count = 0;
-  var maxCount = 12;
+  var count = 0, maxCount = 12;
 
   function spin() {
     var animD = pickRandom(dishPool, availableDishCount);
@@ -1636,33 +1697,22 @@ function indexRandomDish() {
     indexState.currentDishes = animD.concat(animS);
     indexRenderResult();
     count++;
-    if (count >= maxCount) {
-      indexFinalizePick(target, combo);
-    } else {
-      indexState.spinningTimer = setTimeout(spin, 80 + count * 20);
-    }
+    if (count >= maxCount) { indexFinalizePick(target, combo); }
+    else { indexState.spinningTimer = setTimeout(spin, 80 + count * 20); }
   }
   spin();
 }
 
 function indexFinalizePick(dishes, combo) {
   indexState.currentDishes = dishes;
-  var record = {
-    comboLabel: combo.label,
-    sourceLabel: indexState.familyLabel,
-    dishes: dishes.map(function(d) { return { name: d.name, emoji: d.emoji }; }),
-    time: Date.now()
-  };
-  indexState.history = [record].concat(indexState.history).slice(0, 12);
+  var record = { comboLabel: combo.label, sourceLabel: indexState.familyLabel, dishes: dishes.map(function(d) { return { name: d.name, emoji: d.emoji }; }), time: Date.now() };
+  indexState.history = [record].concat(indexState.history).slice(0, 20);
   indexState.spinning = false;
   indexRender();
   vibrate(50);
 }
 
-function indexSetCombo(combo) {
-  indexState.combo = combo;
-  indexRenderComboBar();
-}
+function indexSetCombo(combo) { indexState.combo = combo; indexRenderComboBar(); }
 
 function indexRender() {
   indexRenderComboBar();
@@ -1675,18 +1725,14 @@ function indexRender() {
 function indexRenderComboBar() {
   var el = document.getElementById('combo-bar');
   if (!el) return;
-  el.innerHTML = INDEX_COMBOS.map(function(c) {
-    return '<button class="combo-seg ' + (indexState.combo === c.key ? 'active' : '') + '" data-combo="' + c.key + '">' + c.label + '</button>';
-  }).join('');
+  el.innerHTML = INDEX_COMBOS.map(function(c) { return '<button class="combo-seg ' + (indexState.combo === c.key ? 'active' : '') + '" data-combo="' + c.key + '">' + c.label + '</button>'; }).join('');
 }
 
 function indexRenderSourceSelector() {
   var el = document.getElementById('source-selector');
   if (!el) return;
   var html = '<button class="source-btn ' + (indexState.source === 'personal' ? 'active' : '') + '" data-source="personal">👤 个人菜单</button>';
-  indexState.families.forEach(function(f) {
-    html += '<button class="source-btn ' + (indexState.source === f._id ? 'active' : '') + '" data-source="' + f._id + '">🏠 ' + f.name + '</button>';
-  });
+  indexState.families.forEach(function(f) { html += '<button class="source-btn ' + (indexState.source === f._id ? 'active' : '') + '" data-source="' + f._id + '">🏠 ' + f.name + '</button>'; });
   el.innerHTML = html;
 }
 
@@ -1695,23 +1741,15 @@ function indexRenderResult() {
   if (!el) return;
   var dishes = indexState.currentDishes;
   var spinning = indexState.spinning;
-
-  if (!dishes.length) {
-    el.innerHTML = '<div class="single-area"><div class="single-card placeholder"><span class="single-emoji">🍽️</span><span class="single-name">点击按钮开始</span></div></div>';
-    return;
-  }
+  if (!dishes.length) { el.innerHTML = '<div class="single-area"><div class="single-card placeholder"><span class="single-emoji">🍽️</span><span class="single-name">点击按钮开始</span></div></div>'; return; }
   if (dishes.length === 1) {
     var d = dishes[0];
-    el.innerHTML = '<div class="single-area ' + (spinning ? 'spinning' : '') + '"><div class="single-card">' +
-      (d.image ? '<img class="single-img" src="' + d.image + '" />' : '<span class="single-emoji">' + d.emoji + '</span>') +
-      '<span class="single-name">' + d.name + '</span></div></div>';
+    el.innerHTML = '<div class="single-area ' + (spinning ? 'spinning' : '') + '"><div class="single-card">' + (d.image ? '<img class="single-img" src="' + d.image + '" />' : '<span class="single-emoji">' + d.emoji + '</span>') + '<span class="single-name">' + d.name + '</span></div></div>';
   } else {
-    var cards = dishes.map(function(d) {
-      return '<div class="multi-card">' +
-        (d.image ? '<img class="multi-img" src="' + d.image + '" />' : '<span class="multi-emoji">' + d.emoji + '</span>') +
-        '<span class="multi-name">' + d.name + '</span></div>';
-    }).join('');
-    el.innerHTML = '<div class="multi-area ' + (spinning ? 'spinning' : '') + '">' + cards + '</div>';
+    var cards = dishes.map(function(d) { return '<div class="multi-card">' + (d.image ? '<img class="multi-img" src="' + d.image + '" />' : '<span class="multi-emoji">' + d.emoji + '</span>') + '<span class="multi-name">' + d.name + '</span></div>'; }).join('');
+    var gridCls = dishes.length >= 4 ? ' grid-2x2' : '';
+    var spinCls = spinning ? ' spinning' : '';
+    el.innerHTML = '<div class="multi-area' + gridCls + spinCls + '">' + cards + '</div>';
   }
 }
 
@@ -1719,13 +1757,26 @@ function indexRenderHistory() {
   var el = document.getElementById('history-area');
   if (!el) return;
   if (!indexState.history.length) { el.innerHTML = ''; return; }
-  var items = indexState.history.map(function(h) {
+
+  var showCount = indexState.historyExpanded ? 20 : 5;
+  var visible = indexState.history.slice(0, showCount);
+  var hasMore = indexState.history.length > 5;
+
+  var items = visible.map(function(h) {
     return '<div class="history-item"><span class="history-combo">' + h.comboLabel + '</span>' +
       (h.sourceLabel && h.sourceLabel !== '个人菜单' ? '<span class="history-source">' + h.sourceLabel + '</span>' : '') +
       h.dishes.map(function(d) { return '<span class="history-name">' + d.emoji + d.name + '</span>'; }).join('') +
       '</div>';
   }).join('');
-  el.innerHTML = '<span class="history-title">最近抽取</span><div class="history-list">' + items + '</div>';
+
+  var toggleHtml = '';
+  if (hasMore) {
+    toggleHtml = indexState.historyExpanded
+      ? '<button class="history-toggle" id="history-toggle">收起</button>'
+      : '<button class="history-toggle" id="history-toggle">查看全部 (' + indexState.history.length + ' 条)</button>';
+  }
+
+  el.innerHTML = '<span class="history-title">最近抽取</span><div class="history-list">' + items + '</div>' + toggleHtml;
 }
 
 function indexRenderSpinningBtn(spinning) {
@@ -1733,15 +1784,12 @@ function indexRenderSpinningBtn(spinning) {
   if (!el) return;
   el.disabled = spinning;
   el.classList.toggle('pressing', spinning);
-  el.innerHTML = spinning ? '挑选中...' : '🎲 随机开饭';
+  el.innerHTML = spinning ? '挑选中...' : '🎲 吃啥呀';
 }
 
 function indexLoadFamilies() {
-  try {
-    indexState.families = getUserFamilies();
-  } catch (e) {
-    indexState.families = [];
-  }
+  try { indexState.families = getUserFamilies(); }
+  catch (e) { indexState.families = []; }
 }
 
 function indexSetupEvents() {
@@ -1754,6 +1802,12 @@ function indexSetupEvents() {
     var btn = e.target.closest('.source-btn');
     if (btn) indexSwitchSource(btn.dataset.source);
   });
+  document.getElementById('history-area').addEventListener('click', function(e) {
+    if (e.target.closest('#history-toggle')) {
+      indexState.historyExpanded = !indexState.historyExpanded;
+      indexRenderHistory();
+    }
+  });
 }
 
 function initIndexPage() {
@@ -1762,9 +1816,7 @@ function initIndexPage() {
   indexSetupEvents();
 }
 
-function refreshIndexFamilies() {
-  indexLoadFamilies();
-}
+function refreshIndexFamilies() { indexLoadFamilies(); }
 
 
 // --- js/pages/manage.js ---
@@ -2320,20 +2372,20 @@ function initFamilyDetailPage(params) {
 // --- js/app.js ---
 // 主应用 — 路由、页面切换
 
-let currentPage = '';
-let currentParams = {};
+var currentPage = '';
+var currentParams = {};
 
-const PAGES = {
+var PAGES = {
   index:    { init: initIndexPage,    tab: 0 },
   manage:   { init: initManagePage,   tab: 1 },
-  family:   { init: initFamilyPage,   tab: -1 },
+  family:   { init: initFamilyPage,   tab: 2 },
   'family-detail': { init: initFamilyDetailPage, tab: -1 },
 };
 
 function initDefaultDishes() {
-  const stored = getMyDishes();
+  var stored = getMyDishes();
   if (!stored || stored.length === 0) {
-    const dishes = DEFAULT_DISHES.map(function(d, i) { return Object.assign({}, d, { id: i + 1 }); });
+    var dishes = DEFAULT_DISHES.map(function(d, i) { return Object.assign({}, d, { id: i + 1 }); });
     saveMyDishes(dishes);
   }
 }
@@ -2356,32 +2408,25 @@ function navigateTo(page, params) {
   var fam = document.getElementById('page-family');
   var famd = document.getElementById('page-family-detail');
 
-  if (idx) idx.style.display = page === 'index' ? '' : 'none';
-  if (mgr) mgr.style.display = page === 'manage' ? '' : 'none';
-  if (fam) fam.style.display = page === 'family' ? '' : 'none';
-  if (famd) famd.style.display = page === 'family-detail' ? '' : 'none';
+  if (idx) idx.style.display = page === 'index' ? 'flex' : 'none';
+  if (mgr) mgr.style.display = page === 'manage' ? 'flex' : 'none';
+  if (fam) fam.style.display = page === 'family' ? 'flex' : 'none';
+  if (famd) famd.style.display = page === 'family-detail' ? 'flex' : 'none';
 
   var tabBar = document.getElementById('tab-bar');
-  if (tabBar) tabBar.style.display = (page === 'family' || page === 'family-detail') ? 'none' : '';
+  if (tabBar) tabBar.style.display = (page === 'family-detail') ? 'none' : '';
 
   var backBtn = document.getElementById('back-btn');
-  if (backBtn) backBtn.style.display = (page === 'family-detail') ? '' : 'none';
+  if (backBtn) backBtn.style.display = (page === 'family-detail') ? 'block' : 'none';
 
-  if (page === 'family-detail') {
-    document.title = params.familyName || '家庭详情';
-  } else {
-    document.title = '今天吃啥呀？';
-  }
+  document.title = page === 'family-detail' ? (params.familyName || '家庭详情') : '今天吃啥呀？';
 
   route.init(params);
 }
 
 function navigateBack() {
-  if (currentPage === 'family-detail') {
-    navigateTo('family');
-  } else {
-    navigateTo('index');
-  }
+  if (currentPage === 'family-detail') { navigateTo('family'); }
+  else { navigateTo('index'); }
 }
 
 function handleHashChange() {
@@ -2404,9 +2449,8 @@ function setupGlobalEvents() {
     tabBar.addEventListener('click', function(e) {
       var tab = e.target.closest('.tab-item');
       if (!tab) return;
-      var idx = parseInt(tab.dataset.tab);
-      var pages = ['index', 'manage'];
-      navigateTo(pages[idx]);
+      var pages = ['index', 'manage', 'family'];
+      navigateTo(pages[parseInt(tab.dataset.tab)]);
     });
   }
 
@@ -2419,19 +2463,12 @@ function setupGlobalEvents() {
       if (!this.classList.contains('show')) this.textContent = '';
     });
   }
-
-  var idxFamBtn = document.getElementById('index-family-btn');
-  if (idxFamBtn) idxFamBtn.addEventListener('click', function() { navigateTo('family'); });
-
-  var mgrFamBtn = document.getElementById('manage-family-btn');
-  if (mgrFamBtn) mgrFamBtn.addEventListener('click', function() { navigateTo('family'); });
 }
 
 // 启动
 initDefaultDishes();
 window.addEventListener('hashchange', handleHashChange);
 
-// 确保在 DOM 准备好后初始化
 function boot() {
   setupGlobalEvents();
   handleHashChange();
