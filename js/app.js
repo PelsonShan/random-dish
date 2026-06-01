@@ -39,13 +39,13 @@ function navigateTo(page, params) {
   if (idx) idx.style.display = page === 'index' ? '' : 'none';
   if (mgr) mgr.style.display = page === 'manage' ? '' : 'none';
   if (fam) fam.style.display = page === 'family' ? '' : 'none';
-  if (famd) famd.style.display = page === 'family-detail' ? '' : 'none';
+  if (famd) famd.style.display = page === "family" || page === "family-detail" ? "" : "none";
 
   var tabBar = document.getElementById('tab-bar');
   if (tabBar) tabBar.style.display = (page === 'family' || page === 'family-detail') ? 'none' : '';
 
   var backBtn = document.getElementById('back-btn');
-  if (backBtn) backBtn.style.display = (page === 'family-detail') ? '' : 'none';
+  if (backBtn) backBtn.style.display = (page === 'family' || page === 'family-detail') ? '' : 'none';
 
   if (page === 'family-detail') {
     document.title = params.familyName || '家庭详情';
