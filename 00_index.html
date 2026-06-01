@@ -1547,20 +1547,9 @@ function generateInviteCode(familyId) {
 
 
 // --- js/pages/index.js ---
-// 今天吃啥呀？页面
+// 随机开饭页面 - 使用 index_* 前缀避免命名冲突
 
-// In combined mode, all deps are global — no imports needed
-
-const CATEGORY_LABELS_I = { meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
-const COMBOS = [
-  { key: '1c',   label: '单菜',     dishes: 1, soups: 0 },
-  { key: '2c',   label: '两菜',     dishes: 2, soups: 0 },
-  { key: '1c1t', label: '一菜一汤', dishes: 1, soups: 1 },
-  { key: '2c1t', label: '两菜一汤', dishes: 2, soups: 1 },
-  { key: '3c1t', label: '三菜一汤', dishes: 3, soups: 1 },
-];
-
-let state = {
+var indexState = {
   currentDishes: [],
   history: [],
   combo: '1c1t',
@@ -1572,219 +1561,219 @@ let state = {
   spinningTimer: null
 };
 
-function getDishes() {
-  if (state.source === 'personal') {
-    let dishes = getMyDishes();
+var INDEX_COMBOS = [
+  { key: '1c',   label: '单菜',     dishes: 1, soups: 0 },
+  { key: '2c',   label: '两菜',     dishes: 2, soups: 0 },
+  { key: '1c1t', label: '一菜一汤', dishes: 1, soups: 1 },
+  { key: '2c1t', label: '两菜一汤', dishes: 2, soups: 1 },
+  { key: '3c1t', label: '三菜一汤', dishes: 3, soups: 1 },
+];
+
+function indexGetDishes() {
+  if (indexState.source === 'personal') {
+    var dishes = getMyDishes();
     if (!dishes || !dishes.length) {
       dishes = DEFAULT_DISHES;
       saveMyDishes(dishes);
     }
     return dishes;
   }
-  return state.familyDishes[state.source] || [];
+  return indexState.familyDishes[indexState.source] || [];
 }
 
-async function switchSource(source) {
+function indexSwitchSource(source) {
   if (source === 'personal') {
-    state.source = 'personal';
-    state.familyLabel = '个人菜单';
-    render();
+    indexState.source = 'personal';
+    indexState.familyLabel = '个人菜单';
+    indexRender();
     return;
   }
-  const family = state.families.find(f => f._id === source);
-  state.source = source;
-  state.familyLabel = family ? '🏠 ' + family.name : '';
+  var family = indexState.families.find(function(f) { return f._id === source; });
+  indexState.source = source;
+  indexState.familyLabel = family ? '🏠 ' + family.name : '';
 
-  if (!state.familyDishes[source]) {
-    const dishes = getCollection('family_dishes');
-    state.familyDishes[source] = dishes.filter(d => d.familyId === source);
+  if (!indexState.familyDishes[source]) {
+    var allDishes = getCollection('family_dishes');
+    indexState.familyDishes[source] = allDishes.filter(function(d) { return d.familyId === source; });
   }
-  render();
+  indexRender();
 }
 
-function randomDish() {
-  const dishes = getDishes();
+function indexRandomDish() {
+  var dishes = indexGetDishes();
   if (!dishes || !dishes.length) {
     showToast('当前菜单没有菜品', 'none');
     return;
   }
+  if (indexState.spinning) return;
+  indexState.spinning = true;
+  indexRenderSpinningBtn(true);
 
-  if (state.spinning) return;
-  state.spinning = true;
-  renderSpinningBtn(true);
+  var combo = INDEX_COMBOS.find(function(c) { return c.key === indexState.combo; });
+  var dishPool = dishes.filter(function(d) { return d.category !== 'soup'; });
+  var soupPool = dishes.filter(function(d) { return d.category === 'soup'; });
 
-  const combo = COMBOS.find(c => c.key === state.combo);
-  const dishPool = dishes.filter(d => d.category !== 'soup');
-  const soupPool = dishes.filter(d => d.category === 'soup');
-
-  const availableDishCount = Math.min(combo.dishes, dishPool.length);
-  const availableSoupCount = Math.min(combo.soups, soupPool.length);
+  var availableDishCount = Math.min(combo.dishes, dishPool.length);
+  var availableSoupCount = Math.min(combo.soups, soupPool.length);
 
   if (availableDishCount === 0 && availableSoupCount === 0) {
-    state.spinning = false;
-    renderSpinningBtn(false);
+    indexState.spinning = false;
+    indexRenderSpinningBtn(false);
     showToast('菜品数量不足', 'none');
     return;
   }
 
-  const targetDishes = pickRandom(dishPool, availableDishCount);
-  const targetSoups = availableSoupCount > 0 ? pickRandom(soupPool, availableSoupCount) : [];
-  const target = [...targetDishes, ...targetSoups];
+  var targetDishes = pickRandom(dishPool, availableDishCount);
+  var targetSoups = availableSoupCount > 0 ? pickRandom(soupPool, availableSoupCount) : [];
+  var target = targetDishes.concat(targetSoups);
 
-  let count = 0;
-  const maxCount = 12;
+  var count = 0;
+  var maxCount = 12;
 
   function spin() {
-    const animD = pickRandom(dishPool, availableDishCount);
-    const animS = availableSoupCount > 0 ? pickRandom(soupPool, availableSoupCount) : [];
-    state.currentDishes = [...animD, ...animS];
-    renderResult();
-
+    var animD = pickRandom(dishPool, availableDishCount);
+    var animS = availableSoupCount > 0 ? pickRandom(soupPool, availableSoupCount) : [];
+    indexState.currentDishes = animD.concat(animS);
+    indexRenderResult();
     count++;
     if (count >= maxCount) {
-      finalizePick(target, combo);
+      indexFinalizePick(target, combo);
     } else {
-      state.spinningTimer = setTimeout(spin, 80 + count * 20);
+      indexState.spinningTimer = setTimeout(spin, 80 + count * 20);
     }
   }
   spin();
 }
 
-function finalizePick(dishes, combo) {
-  state.currentDishes = dishes;
-  const record = {
+function indexFinalizePick(dishes, combo) {
+  indexState.currentDishes = dishes;
+  var record = {
     comboLabel: combo.label,
-    sourceLabel: state.familyLabel,
-    dishes: dishes.map(d => ({ name: d.name, emoji: d.emoji })),
+    sourceLabel: indexState.familyLabel,
+    dishes: dishes.map(function(d) { return { name: d.name, emoji: d.emoji }; }),
     time: Date.now()
   };
-  state.history = [record, ...state.history].slice(0, 12);
-  state.spinning = false;
-  render();
+  indexState.history = [record].concat(indexState.history).slice(0, 12);
+  indexState.spinning = false;
+  indexRender();
   vibrate(50);
 }
 
-function setCombo(combo) {
-  state.combo = combo;
-  renderComboBar();
+function indexSetCombo(combo) {
+  indexState.combo = combo;
+  indexRenderComboBar();
 }
 
-function render() {
-  renderComboBar();
-  renderSourceSelector();
-  renderResult();
-  renderHistory();
-  renderSpinningBtn(state.spinning);
+function indexRender() {
+  indexRenderComboBar();
+  indexRenderSourceSelector();
+  indexRenderResult();
+  indexRenderHistory();
+  indexRenderSpinningBtn(indexState.spinning);
 }
 
-function renderComboBar() {
-  const el = document.getElementById('combo-bar');
+function indexRenderComboBar() {
+  var el = document.getElementById('combo-bar');
   if (!el) return;
-  el.innerHTML = COMBOS.map(c =>
-    '<button class="combo-seg ' + (state.combo === c.key ? 'active' : '') + '" data-combo="' + c.key + '">' + c.label + '</button>'
-  ).join('');
+  el.innerHTML = INDEX_COMBOS.map(function(c) {
+    return '<button class="combo-seg ' + (indexState.combo === c.key ? 'active' : '') + '" data-combo="' + c.key + '">' + c.label + '</button>';
+  }).join('');
 }
 
-function renderSourceSelector() {
-  const el = document.getElementById('source-selector');
+function indexRenderSourceSelector() {
+  var el = document.getElementById('source-selector');
   if (!el) return;
-  let html = '<button class="source-btn ' + (state.source === 'personal' ? 'active' : '') + '" data-source="personal">👤 个人菜单</button>';
-  state.families.forEach(f => {
-    html += '<button class="source-btn ' + (state.source === f._id ? 'active' : '') + '" data-source="' + f._id + '">🏠 ' + f.name + '</button>';
+  var html = '<button class="source-btn ' + (indexState.source === 'personal' ? 'active' : '') + '" data-source="personal">👤 个人菜单</button>';
+  indexState.families.forEach(function(f) {
+    html += '<button class="source-btn ' + (indexState.source === f._id ? 'active' : '') + '" data-source="' + f._id + '">🏠 ' + f.name + '</button>';
   });
   el.innerHTML = html;
 }
 
-function renderResult() {
-  const el = document.getElementById('result-area');
+function indexRenderResult() {
+  var el = document.getElementById('result-area');
   if (!el) return;
-  const dishes = state.currentDishes;
-  const spinning = state.spinning;
+  var dishes = indexState.currentDishes;
+  var spinning = indexState.spinning;
 
   if (!dishes.length) {
     el.innerHTML = '<div class="single-area"><div class="single-card placeholder"><span class="single-emoji">🍽️</span><span class="single-name">点击按钮开始</span></div></div>';
     return;
   }
-
   if (dishes.length === 1) {
-    const d = dishes[0];
+    var d = dishes[0];
     el.innerHTML = '<div class="single-area ' + (spinning ? 'spinning' : '') + '"><div class="single-card">' +
-      (d.image ? '<img class="single-img" src="' + d.image + '" alt="' + d.name + '" />' : '<span class="single-emoji">' + d.emoji + '</span>') +
+      (d.image ? '<img class="single-img" src="' + d.image + '" />' : '<span class="single-emoji">' + d.emoji + '</span>') +
       '<span class="single-name">' + d.name + '</span></div></div>';
   } else {
-    const cards = dishes.map(d =>
-      '<div class="multi-card">' +
-      (d.image ? '<img class="multi-img" src="' + d.image + '" alt="' + d.name + '" />' : '<span class="multi-emoji">' + d.emoji + '</span>') +
-      '<span class="multi-name">' + d.name + '</span></div>'
-    ).join('');
+    var cards = dishes.map(function(d) {
+      return '<div class="multi-card">' +
+        (d.image ? '<img class="multi-img" src="' + d.image + '" />' : '<span class="multi-emoji">' + d.emoji + '</span>') +
+        '<span class="multi-name">' + d.name + '</span></div>';
+    }).join('');
     el.innerHTML = '<div class="multi-area ' + (spinning ? 'spinning' : '') + '">' + cards + '</div>';
   }
 }
 
-function renderHistory() {
-  const el = document.getElementById('history-area');
+function indexRenderHistory() {
+  var el = document.getElementById('history-area');
   if (!el) return;
-  if (!state.history.length) { el.innerHTML = ''; return; }
-  const items = state.history.map(h =>
-    '<div class="history-item"><span class="history-combo">' + h.comboLabel + '</span>' +
-    (h.sourceLabel && h.sourceLabel !== '个人菜单' ? '<span class="history-source">' + h.sourceLabel + '</span>' : '') +
-    h.dishes.map(d => '<span class="history-name">' + d.emoji + d.name + '</span>').join('') +
-    '</div>'
-  ).join('');
+  if (!indexState.history.length) { el.innerHTML = ''; return; }
+  var items = indexState.history.map(function(h) {
+    return '<div class="history-item"><span class="history-combo">' + h.comboLabel + '</span>' +
+      (h.sourceLabel && h.sourceLabel !== '个人菜单' ? '<span class="history-source">' + h.sourceLabel + '</span>' : '') +
+      h.dishes.map(function(d) { return '<span class="history-name">' + d.emoji + d.name + '</span>'; }).join('') +
+      '</div>';
+  }).join('');
   el.innerHTML = '<span class="history-title">最近抽取</span><div class="history-list">' + items + '</div>';
 }
 
-function renderSpinningBtn(spinning) {
-  const el = document.getElementById('btn-random');
+function indexRenderSpinningBtn(spinning) {
+  var el = document.getElementById('btn-random');
   if (!el) return;
   el.disabled = spinning;
   el.classList.toggle('pressing', spinning);
-  el.innerHTML = spinning ? '挑选中...' : '🎲 今天吃啥呀？';
+  el.innerHTML = spinning ? '挑选中...' : '🎲 随机开饭';
 }
 
-async function loadFamilies() {
+function indexLoadFamilies() {
   try {
-    state.families = getUserFamilies();
+    indexState.families = getUserFamilies();
   } catch (e) {
-    state.families = [];
+    indexState.families = [];
   }
 }
 
-function setupEvents() {
+function indexSetupEvents() {
   document.getElementById('combo-bar').addEventListener('click', function(e) {
-    const btn = e.target.closest('.combo-seg');
-    if (btn) setCombo(btn.dataset.combo);
+    var btn = e.target.closest('.combo-seg');
+    if (btn) indexSetCombo(btn.dataset.combo);
   });
-  document.getElementById('btn-random').addEventListener('click', randomDish);
+  document.getElementById('btn-random').addEventListener('click', indexRandomDish);
   document.getElementById('source-selector').addEventListener('click', function(e) {
-    const btn = e.target.closest('.source-btn');
-    if (btn) switchSource(btn.dataset.source);
+    var btn = e.target.closest('.source-btn');
+    if (btn) indexSwitchSource(btn.dataset.source);
   });
 }
 
 function initIndexPage() {
-  loadFamilies().then(function() {
-    render();
-    setupEvents();
-  });
+  indexLoadFamilies();
+  indexRender();
+  indexSetupEvents();
 }
 
 function refreshIndexFamilies() {
-  loadFamilies();
+  indexLoadFamilies();
 }
 
 
 // --- js/pages/manage.js ---
-// 菜品管理页面 — 替代 pages/manage/manage.js + manage.wxml
+// 菜品管理页面
 
+var MGR_CATEGORY_LABELS = { meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
+var MGR_CATEGORY_ORDER = ['meat', 'veggie', 'noodle', 'soup'];
 
-
-
-
-const CATEGORY_LABELS = { meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
-const CATEGORY_ORDER = ['meat', 'veggie', 'noodle', 'soup'];
-
-let state = {
+var mgrState = {
   dishes: [],
   grouped: [],
   hotDishes: HOT_DISHES,
@@ -1794,256 +1783,217 @@ let state = {
   _idCounter: 0
 };
 
-function loadDishes() {
-  state.dishes = getMyDishes();
-  state._idCounter = state.dishes.reduce((max, d) => Math.max(max, d.id || 0), 0);
-  state.grouped = groupByCategory(state.dishes);
+function mgrLoadDishes() {
+  mgrState.dishes = getMyDishes();
+  mgrState._idCounter = mgrState.dishes.reduce(function(max, d) { return Math.max(max, d.id || 0); }, 0);
+  mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
 }
 
-function groupByCategory(dishes) {
-  return CATEGORY_ORDER.map(cat => ({
-    label: CATEGORY_LABELS[cat],
-    key: cat,
-    items: dishes.filter(d => d.category === cat)
-  })).filter(g => g.items.length);
+function mgrGroupByCategory(dishes) {
+  return MGR_CATEGORY_ORDER.map(function(cat) {
+    return {
+      label: MGR_CATEGORY_LABELS[cat],
+      key: cat,
+      items: dishes.filter(function(d) { return d.category === cat; })
+    };
+  }).filter(function(g) { return g.items.length; });
 }
 
-function filterHotDishes() {
-  state.hotDishes = state.hotFilter === 'all'
+function mgrFilterHotDishes() {
+  mgrState.hotDishes = mgrState.hotFilter === 'all'
     ? HOT_DISHES
-    : HOT_DISHES.filter(d => d.category === state.hotFilter);
+    : HOT_DISHES.filter(function(d) { return d.category === mgrState.hotFilter; });
 }
 
-function addDish() {
-  if (!state.form.name.trim()) {
-    showToast('请输入菜名', 'none');
-    return;
-  }
-  const newDish = {
-    id: state._idCounter + 1,
-    name: state.form.name.trim(),
-    emoji: state.form.emoji || '🍽️',
-    desc: state.form.desc || '暂无描述',
-    category: state.form.category,
-    image: state.form.image || ''
+function mgrAddDish() {
+  if (!mgrState.form.name.trim()) { showToast('请输入菜名', 'none'); return; }
+  var newDish = {
+    id: mgrState._idCounter + 1,
+    name: mgrState.form.name.trim(),
+    emoji: mgrState.form.emoji || '🍽️',
+    desc: mgrState.form.desc || '暂无描述',
+    category: mgrState.form.category,
+    image: mgrState.form.image || ''
   };
-  state.dishes = [...state.dishes, newDish];
-  saveMyDishes(state.dishes);
-  state._idCounter++;
-  state.grouped = groupByCategory(state.dishes);
-  state.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
-  state.adding = false;
+  mgrState.dishes = mgrState.dishes.concat([newDish]);
+  saveMyDishes(mgrState.dishes);
+  mgrState._idCounter++;
+  mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
+  mgrState.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
+  mgrState.adding = false;
   showToast('添加成功', 'success');
-  render();
+  mgrRender();
 }
 
-function addPopular(index) {
-  const dish = state.hotDishes[index];
-  if (state.dishes.some(d => d.name === dish.name)) {
-    showToast(`${dish.name} 已存在`, 'none');
-    return;
+function mgrAddPopular(index) {
+  var dish = mgrState.hotDishes[index];
+  if (mgrState.dishes.some(function(d) { return d.name === dish.name; })) {
+    showToast(dish.name + ' 已存在', 'none'); return;
   }
-  const newDish = { id: state._idCounter + 1, ...dish, image: '' };
-  state.dishes = [...state.dishes, newDish];
-  saveMyDishes(state.dishes);
-  state._idCounter++;
-  state.grouped = groupByCategory(state.dishes);
-  showToast(`已添加 ${dish.name}`, 'success');
+  var newDish = { id: mgrState._idCounter + 1, name: dish.name, emoji: dish.emoji, desc: dish.desc, category: dish.category, image: '' };
+  mgrState.dishes = mgrState.dishes.concat([newDish]);
+  saveMyDishes(mgrState.dishes);
+  mgrState._idCounter++;
+  mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
+  showToast('已添加 ' + dish.name, 'success');
   vibrate(20);
-  render();
+  mgrRender();
 }
 
-async function deleteDish(id) {
-  const confirmed = await showModal('确认删除', '确定要删除这道菜吗？');
-  if (!confirmed) return;
-  state.dishes = state.dishes.filter(d => d.id !== id);
-  saveMyDishes(state.dishes);
-  state.grouped = groupByCategory(state.dishes);
-  render();
+function mgrDeleteDish(id) {
+  showModal('确认删除', '确定要删除这道菜吗？').then(function(confirmed) {
+    if (!confirmed) return;
+    mgrState.dishes = mgrState.dishes.filter(function(d) { return d.id !== id; });
+    saveMyDishes(mgrState.dishes);
+    mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
+    mgrRender();
+  });
 }
 
-function processImage(file) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    // 压缩图片到 200px 宽
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxW = 200;
-      const scale = maxW / img.width;
+function mgrProcessImage(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var maxW = 200;
+      var scale = maxW / img.width;
       canvas.width = maxW;
       canvas.height = img.height * scale;
-      const ctx = canvas.getContext('2d');
+      var ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-      state.form.image = dataUrl;
-      renderForm();
+      mgrState.form.image = canvas.toDataURL('image/jpeg', 0.6);
+      mgrRenderForm();
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-// ---- 渲染 ----
-function render() {
-  renderHotFilter();
-  renderHotList();
-  renderForm();
-  renderDishList();
-  renderAddBtn();
+function mgrRender() {
+  mgrRenderHotFilter();
+  mgrRenderHotList();
+  mgrRenderForm();
+  mgrRenderDishList();
+  mgrRenderAddBtn();
 }
 
-function renderHotFilter() {
-  const el = document.getElementById('manage-hot-filter');
+function mgrRenderHotFilter() {
+  var el = document.getElementById('manage-hot-filter');
   if (!el) return;
-  const cats = ['all', 'meat', 'veggie', 'noodle', 'soup'];
-  const labels = { all: '全部', meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
-  el.innerHTML = cats.map(c =>
-    `<button class="hot-filter-btn ${state.hotFilter === c ? 'active' : ''}" data-filter="${c}">${labels[c]}</button>`
-  ).join('');
+  var cats = ['all', 'meat', 'veggie', 'noodle', 'soup'];
+  var labels = { all: '全部', meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
+  el.innerHTML = cats.map(function(c) {
+    return '<button class="hot-filter-btn ' + (mgrState.hotFilter === c ? 'active' : '') + '" data-filter="' + c + '">' + labels[c] + '</button>';
+  }).join('');
 }
 
-function renderHotList() {
-  const el = document.getElementById('manage-hot-list');
+function mgrRenderHotList() {
+  var el = document.getElementById('manage-hot-list');
   if (!el) return;
-  el.innerHTML = state.hotDishes.map((d, i) => `
-    <div class="popular-item" data-index="${i}">
-      <span class="pop-emoji">${d.emoji}</span>
-      <span class="pop-name">${d.name}</span>
-      <span class="pop-add">+</span>
-    </div>`).join('');
+  el.innerHTML = mgrState.hotDishes.map(function(d, i) {
+    return '<div class="popular-item" data-index="' + i + '"><span class="pop-emoji">' + d.emoji + '</span><span class="pop-name">' + d.name + '</span><span class="pop-add">+</span></div>';
+  }).join('');
 }
 
-function renderAddBtn() {
-  const el = document.getElementById('manage-add-btn');
+function mgrRenderAddBtn() {
+  var el = document.getElementById('manage-add-btn');
   if (!el) return;
-  el.innerHTML = state.adding ? '收起' : '+ 自定义菜品';
+  el.innerHTML = mgrState.adding ? '收起' : '+ 自定义菜品';
 }
 
-function renderForm() {
-  const el = document.getElementById('manage-form');
-  if (!el) return;
-  if (!state.adding) { el.innerHTML = ''; return; }
-  el.innerHTML = `
-    <div class="img-section">
-      <div class="img-picker">
-        ${state.form.image
-          ? `<img class="preview-img" src="${state.form.image}" alt="预览" />`
-          : `<div class="img-placeholder"><span class="img-icon">📷</span><span class="img-hint">上传菜品图片</span></div>`}
-      </div>
-      <div class="img-actions">
-        <label class="img-btn"><span class="img-btn-icon">📸</span><span class="img-btn-text">拍照</span><input type="file" accept="image/*" capture="camera" class="file-input" /></label>
-        <label class="img-btn"><span class="img-btn-icon">🖼️</span><span class="img-btn-text">相册</span><input type="file" accept="image/*" class="file-input" /></label>
-      </div>
-    </div>
-    <input class="input" placeholder="菜名（必填）" value="${escapeHtml(state.form.name)}" data-field="name" />
-    <input class="input" placeholder="Emoji（如 🍗，可选）" value="${escapeHtml(state.form.emoji)}" data-field="emoji" maxlength="2" />
-    <input class="input" placeholder="一句话描述（可选）" value="${escapeHtml(state.form.desc)}" data-field="desc" />
-    <div class="cat-row">
-      <span class="cat-label">分类</span>
-      ${['meat','veggie','noodle','soup'].map(c =>
-        `<button class="cat-btn ${state.form.category === c ? 'active' : ''}" data-cat="${c}">${CATEGORY_LABELS[c]}</button>`
-      ).join('')}
-    </div>
-    <button class="btn-confirm" id="manage-form-confirm">确认添加</button>
-  `;
-}
-
-function renderDishList() {
-  const el = document.getElementById('manage-dish-list');
-  if (!el) return;
-  if (!state.grouped.length) {
-    el.innerHTML = `<div class="empty"><span class="empty-icon">🍽️</span><span class="empty-text">还没有菜品</span><span class="empty-hint">从热门菜品快速添加，或自定义创建</span></div>`;
-    return;
-  }
-  el.innerHTML = state.grouped.map(g => `
-    <div class="section">
-      <div class="section-header"><span class="section-title">${g.label}</span><span class="section-count">${g.items.length}道</span></div>
-      <div class="dish-list">
-        ${g.items.map(d => `
-          <div class="dish-item">
-            ${d.image ? `<img class="item-img" src="${d.image}" alt="${d.name}" />` : `<span class="item-emoji">${d.emoji}</span>`}
-            <div class="item-body"><span class="item-name">${d.name}</span><span class="item-desc">${d.desc}</span></div>
-            <button class="btn-del" data-del-id="${d.id}"><span class="del-icon">✕</span></button>
-          </div>`).join('')}
-      </div>
-    </div>`).join('');
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
+function mgrEscapeHtml(str) {
+  var div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
 }
 
-// ---- 事件委托 ----
-function setupEvents() {
-  // 热门分类筛选
-  document.getElementById('manage-hot-filter').addEventListener('click', (e) => {
-    const btn = e.target.closest('.hot-filter-btn');
-    if (btn) {
-      state.hotFilter = btn.dataset.filter;
-      filterHotDishes();
-      render();
-    }
-  });
+function mgrRenderForm() {
+  var el = document.getElementById('manage-form');
+  if (!el) return;
+  if (!mgrState.adding) { el.innerHTML = ''; return; }
+  var f = mgrState.form;
+  el.innerHTML = '<div class="img-section"><div class="img-picker">' +
+    (f.image ? '<img class="preview-img" src="' + f.image + '" />' : '<div class="img-placeholder"><span class="img-icon">📷</span><span class="img-hint">上传菜品图片</span></div>') +
+    '</div><div class="img-actions">' +
+    '<label class="img-btn"><span class="img-btn-icon">📸</span><span class="img-btn-text">拍照</span><input type="file" accept="image/*" capture="camera" class="file-input" /></label>' +
+    '<label class="img-btn"><span class="img-btn-icon">🖼️</span><span class="img-btn-text">相册</span><input type="file" accept="image/*" class="file-input" /></label>' +
+    '</div></div>' +
+    '<input class="input" placeholder="菜名（必填）" value="' + mgrEscapeHtml(f.name) + '" data-field="name" />' +
+    '<input class="input" placeholder="Emoji（如 🍗，可选）" value="' + mgrEscapeHtml(f.emoji) + '" data-field="emoji" maxlength="2" />' +
+    '<input class="input" placeholder="一句话描述（可选）" value="' + mgrEscapeHtml(f.desc) + '" data-field="desc" />' +
+    '<div class="cat-row"><span class="cat-label">分类</span>' +
+    ['meat','veggie','noodle','soup'].map(function(c) {
+      return '<button class="cat-btn ' + (f.category === c ? 'active' : '') + '" data-cat="' + c + '">' + MGR_CATEGORY_LABELS[c] + '</button>';
+    }).join('') + '</div>' +
+    '<button class="btn-confirm" id="manage-form-confirm">确认添加</button>';
+}
 
-  // 热门菜品点击添加
-  document.getElementById('manage-hot-list').addEventListener('click', (e) => {
-    const item = e.target.closest('.popular-item');
-    if (item) addPopular(parseInt(item.dataset.index));
-  });
+function mgrRenderDishList() {
+  var el = document.getElementById('manage-dish-list');
+  if (!el) return;
+  if (!mgrState.grouped.length) {
+    el.innerHTML = '<div class="empty"><span class="empty-icon">🍽️</span><span class="empty-text">还没有菜品</span><span class="empty-hint">从热门菜品快速添加，或自定义创建</span></div>';
+    return;
+  }
+  el.innerHTML = mgrState.grouped.map(function(g) {
+    return '<div class="section"><div class="section-header"><span class="section-title">' + g.label + '</span><span class="section-count">' + g.items.length + '道</span></div><div class="dish-list">' +
+      g.items.map(function(d) {
+        return '<div class="dish-item">' +
+          (d.image ? '<img class="item-img" src="' + d.image + '" />' : '<span class="item-emoji">' + d.emoji + '</span>') +
+          '<div class="item-body"><span class="item-name">' + d.name + '</span><span class="item-desc">' + d.desc + '</span></div>' +
+          '<button class="btn-del" data-del-id="' + d.id + '"><span class="del-icon">✕</span></button></div>';
+      }).join('') + '</div></div>';
+  }).join('');
+}
 
-  // 添加按钮
-  document.getElementById('manage-add-btn').addEventListener('click', () => {
-    state.adding = !state.adding;
-    if (!state.adding) state.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
-    render();
+function mgrSetupEvents() {
+  document.getElementById('manage-hot-filter').addEventListener('click', function(e) {
+    var btn = e.target.closest('.hot-filter-btn');
+    if (btn) { mgrState.hotFilter = btn.dataset.filter; mgrFilterHotDishes(); mgrRender(); }
   });
-
-  // 表单 - 图片上传 / 输入 / 分类 / 确认
-  document.getElementById('manage-form').addEventListener('click', (e) => {
-    const btn = e.target.closest('#manage-form-confirm');
-    if (btn) { addDish(); return; }
-    const catBtn = e.target.closest('.cat-btn');
-    if (catBtn) { state.form.category = catBtn.dataset.cat; renderForm(); }
+  document.getElementById('manage-hot-list').addEventListener('click', function(e) {
+    var item = e.target.closest('.popular-item');
+    if (item) mgrAddPopular(parseInt(item.dataset.index));
   });
-  document.getElementById('manage-form').addEventListener('input', (e) => {
+  document.getElementById('manage-add-btn').addEventListener('click', function() {
+    mgrState.adding = !mgrState.adding;
+    if (!mgrState.adding) mgrState.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
+    mgrRender();
+  });
+  document.getElementById('manage-form').addEventListener('click', function(e) {
+    if (e.target.matches('#manage-form-confirm')) { mgrAddDish(); return; }
+    var catBtn = e.target.closest('.cat-btn');
+    if (catBtn) { mgrState.form.category = catBtn.dataset.cat; mgrRenderForm(); }
+  });
+  document.getElementById('manage-form').addEventListener('input', function(e) {
     if (e.target.classList.contains('input') && e.target.dataset.field) {
-      state.form[e.target.dataset.field] = e.target.value;
+      mgrState.form[e.target.dataset.field] = e.target.value;
     }
   });
-  document.getElementById('manage-form').addEventListener('change', (e) => {
+  document.getElementById('manage-form').addEventListener('change', function(e) {
     if (e.target.type === 'file' && e.target.files[0]) {
-      processImage(e.target.files[0]);
+      mgrProcessImage(e.target.files[0]);
     }
   });
-
-  // 删除菜品
-  document.getElementById('manage-dish-list').addEventListener('click', (e) => {
-    const delBtn = e.target.closest('.btn-del');
-    if (delBtn) deleteDish(parseInt(delBtn.dataset.delId));
+  document.getElementById('manage-dish-list').addEventListener('click', function(e) {
+    var delBtn = e.target.closest('.btn-del');
+    if (delBtn) mgrDeleteDish(parseInt(delBtn.dataset.delId));
   });
 }
 
-function init() {
-  loadDishes();
-  filterHotDishes();
-  render();
-  setupEvents();
+function initManagePage() {
+  mgrLoadDishes();
+  mgrFilterHotDishes();
+  mgrRender();
+  mgrSetupEvents();
 }
-
-
 
 
 // --- js/pages/family.js ---
-// 家庭列表页面 — 替代 pages/family/family.js + family.wxml
+// 家庭列表页面
 
-
-
-
-
-let state = {
+var famState = {
   families: [],
   showCreate: false,
   showJoin: false,
@@ -2051,239 +2001,99 @@ let state = {
   joinCode: ''
 };
 
-function loadFamilies() {
-  try {
-    state.families = getUserFamilies();
-  } catch (e) {
-    state.families = [];
-  }
+function famLoadFamilies() {
+  try { famState.families = getUserFamilies(); }
+  catch (e) { famState.families = []; }
 }
 
-function render() {
-  const el = document.getElementById('page-family');
+function famRender() {
+  var el = document.getElementById('page-family');
   if (!el) return;
 
-  if (state.families.length === 0 && !state.showJoin) {
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-badge">👨‍👩‍👧</div>
-        <span class="empty-title">还没有家庭</span>
-        <span class="empty-desc">创建一个家庭，和家人共享菜单</span>
-        <div class="empty-actions">
-          <button class="btn btn-primary" id="family-create-btn">🏠 创建家庭</button>
-          <button class="btn btn-outline" id="family-join-btn">🔑 输入邀请码</button>
-        </div>
-      </div>
-      <div id="family-create-form"></div>
-    `;
-    if (state.showCreate) renderCreateForm();
+  if (famState.families.length === 0 && !famState.showJoin) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-badge">👨‍👩‍👧</div><span class="empty-title">还没有家庭</span><span class="empty-desc">创建一个家庭，和家人共享菜单</span><div class="empty-actions"><button class="btn btn-primary" id="family-create-btn">🏠 创建家庭</button><button class="btn btn-outline" id="family-join-btn">🔑 输入邀请码</button></div></div><div id="family-create-form"></div>';
+    if (famState.showCreate) famRenderCreateForm();
     return;
   }
 
-  // 有家庭列表
-  let html = `
-    <div class="family-list">
-      <div class="list-header"><span class="list-title">我的家庭</span><span class="list-count">${state.families.length} 个</span></div>
-  `;
-
-  state.families.forEach(f => {
-    const roleLabel = f.role === 'owner' ? '创建者' : f.role === 'admin' ? '管理员' : '成员';
-    html += `
-      <div class="family-card" data-family-id="${f._id}" data-family-name="${f.name}">
-        <div class="card-left">
-          <span class="card-icon">🏠</span>
-          <div class="card-info">
-            <span class="card-name">${f.name}</span>
-            <span class="card-meta">${f.memberCount || 0} 位成员 · ${roleLabel}</span>
-          </div>
-        </div>
-        <div class="card-right">
-          <div class="card-tags">
-            <span class="tag tag-dish">${f.dishCount || 0} 道菜</span>
-            ${f.role === 'owner' || f.role === 'admin' ? `<span class="tag tag-code">邀请码 ${f.inviteCode}</span>` : ''}
-          </div>
-          <span class="card-arrow">›</span>
-        </div>
-      </div>`;
+  var html = '<div class="family-list"><div class="list-header"><span class="list-title">我的家庭</span><span class="list-count">' + famState.families.length + ' 个</span></div>';
+  famState.families.forEach(function(f) {
+    var roleLabel = f.role === 'owner' ? '创建者' : f.role === 'admin' ? '管理员' : '成员';
+    html += '<div class="family-card" data-family-id="' + f._id + '" data-family-name="' + f.name + '"><div class="card-left"><span class="card-icon">🏠</span><div class="card-info"><span class="card-name">' + f.name + '</span><span class="card-meta">' + (f.memberCount || 0) + ' 位成员 · ' + roleLabel + '</span></div></div><div class="card-right"><div class="card-tags"><span class="tag tag-dish">' + (f.dishCount || 0) + ' 道菜</span>' + (f.role === 'owner' || f.role === 'admin' ? '<span class="tag tag-code">邀请码 ' + f.inviteCode + '</span>' : '') + '</div><span class="card-arrow">›</span></div></div>';
   });
-
-  html += `
-      <div class="bottom-actions">
-        <button class="btn btn-outline-sm" id="family-create-btn2">+ 创建家庭</button>
-        <button class="btn btn-outline-sm" id="family-join-btn2">🔑 加入家庭</button>
-      </div>
-    </div>
-    <div id="family-join-form"></div>
-  `;
-
+  html += '<div class="bottom-actions"><button class="btn btn-outline-sm" id="family-create-btn2">+ 创建家庭</button><button class="btn btn-outline-sm" id="family-join-btn2">🔑 加入家庭</button></div></div><div id="family-join-form"></div>';
   el.innerHTML = html;
-  if (state.showJoin) renderJoinForm();
-  if (state.showCreate) renderCreateForm();
+  if (famState.showJoin) famRenderJoinForm();
+  if (famState.showCreate) famRenderCreateForm();
 }
 
-function renderCreateForm() {
-  const targetEl = document.getElementById('family-create-form') || document.getElementById('page-family');
+function famRenderCreateForm() {
+  var targetEl = document.getElementById('family-create-form') || document.getElementById('page-family');
   if (!targetEl) return;
-
-  const formHtml = `
-    <div class="form-card" id="create-form-card">
-      <div class="form-header">
-        <span class="form-title">创建家庭</span>
-        <span class="form-close" id="create-close">✕</span>
-      </div>
-      <input class="input" placeholder="家庭名称（如"我们家"）" value="${state.createName}" id="create-name-input" maxlength="20" />
-      <button class="btn btn-primary" id="create-confirm" style="margin-top:16px;">确认创建</button>
-    </div>
-  `;
-
-  if (targetEl.id === 'page-family') {
-    targetEl.insertAdjacentHTML('beforeend', formHtml);
-  } else {
-    targetEl.innerHTML = formHtml;
-  }
-  state.showCreate = true;
+  var formHtml = '<div class="form-card" id="create-form-card"><div class="form-header"><span class="form-title">创建家庭</span><span class="form-close" id="create-close">✕</span></div><input class="input" placeholder="家庭名称（如我们家）" value="' + famState.createName + '" id="create-name-input" maxlength="20" /><button class="btn btn-primary" id="create-confirm" style="margin-top:16px;">确认创建</button></div>';
+  if (targetEl.id === 'page-family') { targetEl.insertAdjacentHTML('beforeend', formHtml); }
+  else { targetEl.innerHTML = formHtml; }
+  famState.showCreate = true;
 }
 
-function renderJoinForm() {
-  const targetEl = document.getElementById('family-join-form') || document.getElementById('page-family');
+function famRenderJoinForm() {
+  var targetEl = document.getElementById('family-join-form') || document.getElementById('page-family');
   if (!targetEl) return;
-
-  const formHtml = `
-    <div class="form-card" id="join-form-card">
-      <div class="form-header">
-        <span class="form-title">加入家庭</span>
-        <span class="form-close" id="join-close">✕</span>
-      </div>
-      <input class="input" placeholder="输入 6 位邀请码" value="${state.joinCode}" id="join-code-input" maxlength="6" style="text-transform:uppercase;" />
-      ${state.joinCode.length === 6
-        ? '<button class="btn btn-primary" id="join-confirm" style="margin-top:16px;">确认加入</button>'
-        : '<button class="btn btn-disabled" style="margin-top:16px;" disabled>请输入 6 位邀请码</button>'}
-    </div>
-  `;
-
-  if (targetEl.id === 'page-family') {
-    targetEl.insertAdjacentHTML('beforeend', formHtml);
-  } else {
-    targetEl.innerHTML = formHtml;
-  }
-  state.showJoin = true;
+  var formHtml = '<div class="form-card" id="join-form-card"><div class="form-header"><span class="form-title">加入家庭</span><span class="form-close" id="join-close">✕</span></div><input class="input" placeholder="输入 6 位邀请码" value="' + famState.joinCode + '" id="join-code-input" maxlength="6" style="text-transform:uppercase;" />' + (famState.joinCode.length === 6 ? '<button class="btn btn-primary" id="join-confirm" style="margin-top:16px;">确认加入</button>' : '<button class="btn btn-disabled" style="margin-top:16px;" disabled>请输入 6 位邀请码</button>') + '</div>';
+  if (targetEl.id === 'page-family') { targetEl.insertAdjacentHTML('beforeend', formHtml); }
+  else { targetEl.innerHTML = formHtml; }
+  famState.showJoin = true;
 }
 
-// ---- 事件 ----
-function setupEvents() {
-  const page = document.getElementById('page-family');
+function famSetupEvents() {
+  var page = document.getElementById('page-family');
   if (!page) return;
 
-  page.addEventListener('click', async (e) => {
-    // 打开家庭详情
-    const card = e.target.closest('.family-card');
-    if (card) {
-      const id = card.dataset.familyId;
-      const name = card.dataset.familyName;
-      navigateTo('family-detail', { familyId: id, familyName: name });
-      return;
-    }
-
-    // 创建按钮
-    if (e.target.matches('#family-create-btn, #family-create-btn2')) {
-      state.showCreate = true;
-      state.showJoin = false;
-      state.createName = '';
-      render();
-      return;
-    }
-
-    // 加入按钮
-    if (e.target.matches('#family-join-btn, #family-join-btn2')) {
-      state.showJoin = true;
-      state.showCreate = false;
-      state.joinCode = '';
-      render();
-      return;
-    }
-
-    // 关闭创建表单
-    if (e.target.matches('#create-close')) {
-      state.showCreate = false;
-      render();
-      return;
-    }
-
-    // 关闭加入表单
-    if (e.target.matches('#join-close')) {
-      state.showJoin = false;
-      render();
-      return;
-    }
-
-    // 确认创建
+  page.addEventListener('click', function(e) {
+    var card = e.target.closest('.family-card');
+    if (card) { navigateTo('family-detail', { familyId: card.dataset.familyId, familyName: card.dataset.familyName }); return; }
+    if (e.target.matches('#family-create-btn, #family-create-btn2')) { famState.showCreate = true; famState.showJoin = false; famState.createName = ''; famRender(); return; }
+    if (e.target.matches('#family-join-btn, #family-join-btn2')) { famState.showJoin = true; famState.showCreate = false; famState.joinCode = ''; famRender(); return; }
+    if (e.target.matches('#create-close')) { famState.showCreate = false; famRender(); return; }
+    if (e.target.matches('#join-close')) { famState.showJoin = false; famRender(); return; }
     if (e.target.matches('#create-confirm')) {
-      const name = state.createName.trim();
+      var name = famState.createName.trim();
       if (!name) { showToast('请输入家庭名称', 'none'); return; }
-      const res = createFamily(name);
-      if (res.success) {
-        showToast('创建成功', 'success');
-        state.showCreate = false;
-        state.createName = '';
-        loadFamilies();
-        render();
-      } else {
-        showToast(res.error, 'none');
-      }
+      var res = createFamily(name);
+      if (res.success) { showToast('创建成功', 'success'); famState.showCreate = false; famState.createName = ''; famLoadFamilies(); famRender(); }
+      else { showToast(res.error, 'none'); }
       return;
     }
-
-    // 确认加入
     if (e.target.matches('#join-confirm')) {
-      const code = state.joinCode.trim();
+      var code = famState.joinCode.trim();
       if (code.length !== 6) return;
-      const res = joinFamily(code);
-      if (res.success) {
-        showToast('加入成功', 'success');
-        state.showJoin = false;
-        state.joinCode = '';
-        loadFamilies();
-        render();
-      } else {
-        showToast(res.error, 'none');
-      }
+      var res = joinFamily(code);
+      if (res.success) { showToast('加入成功', 'success'); famState.showJoin = false; famState.joinCode = ''; famLoadFamilies(); famRender(); }
+      else { showToast(res.error, 'none'); }
       return;
     }
   });
 
-  // 输入事件
-  page.addEventListener('input', (e) => {
-    if (e.target.id === 'create-name-input') {
-      state.createName = e.target.value;
-    }
-    if (e.target.id === 'join-code-input') {
-      state.joinCode = e.target.value.toUpperCase();
-      if (state.joinCode.length === 6) renderJoinForm();
-    }
+  page.addEventListener('input', function(e) {
+    if (e.target.id === 'create-name-input') famState.createName = e.target.value;
+    if (e.target.id === 'join-code-input') { famState.joinCode = e.target.value.toUpperCase(); if (famState.joinCode.length === 6) famRenderJoinForm(); }
   });
 }
 
-function init() {
-  loadFamilies();
-  render();
-  setupEvents();
+function initFamilyPage() {
+  famLoadFamilies();
+  famRender();
+  famSetupEvents();
 }
-
-
 
 
 // --- js/pages/family-detail.js ---
-// 家庭详情页面 — 替代 pages/family-detail/family-detail.js + family-detail.wxml
+// 家庭详情页面
 
+var FD_CATEGORY_LABELS = { meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
+var FD_CATEGORY_ORDER = ['meat', 'veggie', 'noodle', 'soup'];
 
-
-
-
-
-const CATEGORY_LABELS = { meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
-const CATEGORY_ORDER = ['meat', 'veggie', 'noodle', 'soup'];
-
-let state = {
+var fdState = {
   familyId: '',
   familyName: '',
   inviteCode: '',
@@ -2299,342 +2109,212 @@ let state = {
   members: []
 };
 
-function loadAll() {
-  const detail = getFamilyDetail(state.familyId);
-  if (!detail) {
-    showToast('家庭不存在', 'none');
-    navigateBack();
-    return;
-  }
-  state.inviteCode = detail.inviteCode;
-  state.myRole = detail.myRole;
-  state.myOpenId = detail.myOpenId;
-  state.allDishes = detail.allDishes;
-  state.groupedDishes = groupByCategory(state.allDishes);
-  state.members = detail.members;
-  state.familyName = detail.family.name;
+function fdLoadAll() {
+  var detail = getFamilyDetail(fdState.familyId);
+  if (!detail) { showToast('家庭不存在', 'none'); navigateBack(); return; }
+  fdState.inviteCode = detail.inviteCode;
+  fdState.myRole = detail.myRole;
+  fdState.myOpenId = detail.myOpenId;
+  fdState.allDishes = detail.allDishes;
+  fdState.groupedDishes = fdGroupByCategory(fdState.allDishes);
+  fdState.members = detail.members;
+  fdState.familyName = detail.family.name;
 }
 
-function groupByCategory(dishes) {
-  return CATEGORY_ORDER.map(cat => ({
-    label: CATEGORY_LABELS[cat],
-    key: cat,
-    items: dishes.filter(d => d.category === cat)
-  })).filter(g => g.items.length);
+function fdGroupByCategory(dishes) {
+  return FD_CATEGORY_ORDER.map(function(cat) {
+    return { label: FD_CATEGORY_LABELS[cat], key: cat, items: dishes.filter(function(d) { return d.category === cat; }) };
+  }).filter(function(g) { return g.items.length; });
 }
 
-function filterHotDishes() {
-  state.hotDishes = state.hotFilter === 'all' ? HOT_DISHES : HOT_DISHES.filter(d => d.category === state.hotFilter);
+function fdFilterHotDishes() {
+  fdState.hotDishes = fdState.hotFilter === 'all' ? HOT_DISHES : HOT_DISHES.filter(function(d) { return d.category === fdState.hotFilter; });
 }
 
-function addDish() {
-  if (!state.form.name.trim()) { showToast('请输入菜名', 'none'); return; }
-  addFamilyDish(state.familyId, {
-    name: state.form.name.trim(),
-    emoji: state.form.emoji || '🍽️',
-    desc: state.form.desc || '暂无描述',
-    category: state.form.category,
-    image: state.form.image || ''
+function fdAddDish() {
+  if (!fdState.form.name.trim()) { showToast('请输入菜名', 'none'); return; }
+  addFamilyDish(fdState.familyId, {
+    name: fdState.form.name.trim(), emoji: fdState.form.emoji || '🍽️',
+    desc: fdState.form.desc || '暂无描述', category: fdState.form.category, image: fdState.form.image || ''
   });
-  state.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
-  state.adding = false;
-  loadAll();
-  render();
+  fdState.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
+  fdState.adding = false;
+  fdLoadAll();
+  fdRender();
   showToast('添加成功', 'success');
 }
 
-function addPopular(index) {
-  const dish = state.hotDishes[index];
-  if (state.allDishes.some(d => d.name === dish.name)) {
-    showToast(`${dish.name} 已存在`, 'none');
-    return;
+function fdAddPopular(index) {
+  var dish = fdState.hotDishes[index];
+  if (fdState.allDishes.some(function(d) { return d.name === dish.name; })) {
+    showToast(dish.name + ' 已存在', 'none'); return;
   }
-  addFamilyDish(state.familyId, {
-    name: dish.name,
-    emoji: dish.emoji,
-    desc: dish.desc,
-    category: dish.category,
-    image: ''
-  });
-  loadAll();
-  render();
-  showToast(`已添加 ${dish.name}`, 'success');
+  addFamilyDish(fdState.familyId, { name: dish.name, emoji: dish.emoji, desc: dish.desc, category: dish.category, image: '' });
+  fdLoadAll();
+  fdRender();
+  showToast('已添加 ' + dish.name, 'success');
   vibrate(20);
 }
 
-async function deleteDish(id) {
-  const confirmed = await showModal('确认删除', '确定要删除这道菜吗？');
-  if (!confirmed) return;
-  deleteFamilyDish(id);
-  loadAll();
-  render();
+function fdDeleteDish(id) {
+  showModal('确认删除', '确定要删除这道菜吗？').then(function(confirmed) {
+    if (!confirmed) return;
+    deleteFamilyDish(id);
+    fdLoadAll();
+    fdRender();
+  });
 }
 
-async function handleManageMember(userId, action) {
-  const res = manageMember(state.familyId, userId, action);
-  if (res.success) {
-    showToast('操作成功', 'success');
-    loadAll();
-    render();
-  } else {
-    showToast(res.error, 'none');
-  }
+function fdHandleManageMember(userId, action) {
+  var res = manageMember(fdState.familyId, userId, action);
+  if (res.success) { showToast('操作成功', 'success'); fdLoadAll(); fdRender(); }
+  else { showToast(res.error, 'none'); }
 }
 
-async function leaveFamily() {
-  const confirmed = await showModal('退出家庭', '确定要退出这个家庭吗？');
-  if (!confirmed) return;
-  const res = manageMember(state.familyId, state.myOpenId, 'leave');
-  if (res.success) {
-    showToast('已退出', 'success');
-    setTimeout(() => navigateBack(), 1500);
-  } else {
-    showToast(res.error, 'none');
-  }
+function fdLeaveFamily() {
+  showModal('退出家庭', '确定要退出这个家庭吗？').then(function(confirmed) {
+    if (!confirmed) return;
+    var res = manageMember(fdState.familyId, fdState.myOpenId, 'leave');
+    if (res.success) { showToast('已退出', 'success'); setTimeout(function() { navigateBack(); }, 1500); }
+    else { showToast(res.error, 'none'); }
+  });
 }
 
-function copyInviteCode() {
-  navigator.clipboard.writeText(state.inviteCode).then(
-    () => showToast('已复制', 'success'),
-    () => showToast('复制失败', 'none')
+function fdCopyInviteCode() {
+  navigator.clipboard.writeText(fdState.inviteCode).then(
+    function() { showToast('已复制', 'success'); },
+    function() { showToast('复制失败', 'none'); }
   );
 }
 
-function processImage(file) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxW = 200;
-      const scale = maxW / img.width;
-      canvas.width = maxW;
-      canvas.height = img.height * scale;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      state.form.image = canvas.toDataURL('image/jpeg', 0.6);
-      renderForm();
+function fdProcessImage(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var maxW = 200, scale = maxW / img.width;
+      canvas.width = maxW; canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      fdState.form.image = canvas.toDataURL('image/jpeg', 0.6);
+      fdRenderForm();
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-// ---- 渲染 ----
-function render() {
-  const el = document.getElementById('page-family-detail');
+function fdRender() {
+  var el = document.getElementById('page-family-detail');
   if (!el) return;
+  var isAdmin = fdState.myRole === 'owner' || fdState.myRole === 'admin';
 
-  const isAdmin = state.myRole === 'owner' || state.myRole === 'admin';
+  el.innerHTML = (isAdmin ? '<div class="invite-bar"><div class="invite-code"><span class="invite-label">邀请码</span><span class="invite-value">' + fdState.inviteCode + '</span></div><div class="invite-actions"><button class="invite-btn" id="fd-copy-invite">📋 复制</button><button class="invite-btn invite-share" id="fd-share">📤 分享</button></div></div>' : '') +
+    '<div class="tab-bar"><button class="tab ' + (fdState.currentTab === 'dishes' ? 'active' : '') + '" data-tab="dishes">🍽️ 家庭菜单</button><button class="tab ' + (fdState.currentTab === 'members' ? 'active' : '') + '" data-tab="members">👥 成员 (' + fdState.members.length + ')</button></div>' +
+    '<div id="fd-tab-content"></div><div id="fd-form-area"></div><button class="btn-leave" id="fd-leave">退出家庭</button>';
 
-  el.innerHTML = `
-    ${isAdmin ? `
-    <div class="invite-bar">
-      <div class="invite-code">
-        <span class="invite-label">邀请码</span>
-        <span class="invite-value">${state.inviteCode}</span>
-      </div>
-      <div class="invite-actions">
-        <button class="invite-btn" id="fd-copy-invite">📋 复制</button>
-        <button class="invite-btn invite-share" id="fd-share">📤 分享</button>
-      </div>
-    </div>` : ''}
-
-    <div class="tab-bar">
-      <button class="tab ${state.currentTab === 'dishes' ? 'active' : ''}" data-tab="dishes">🍽️ 家庭菜单</button>
-      <button class="tab ${state.currentTab === 'members' ? 'active' : ''}" data-tab="members">👥 成员 (${state.members.length})</button>
-    </div>
-
-    <div id="fd-tab-content"></div>
-    <div id="fd-form-area"></div>
-    <button class="btn-leave" id="fd-leave">退出家庭</button>
-  `;
-
-  if (state.currentTab === 'dishes') renderDishesTab();
-  else renderMembersTab();
+  if (fdState.currentTab === 'dishes') fdRenderDishesTab();
+  else fdRenderMembersTab();
 }
 
-function renderDishesTab() {
-  const el = document.getElementById('fd-tab-content');
+function fdRenderDishesTab() {
+  var el = document.getElementById('fd-tab-content');
   if (!el) return;
+  var isAdmin = fdState.myRole === 'owner' || fdState.myRole === 'admin';
 
-  const isAdmin = state.myRole === 'owner' || state.myRole === 'admin';
+  el.innerHTML = '<div class="popular-section"><span class="section-label">🔥 热门菜品 · 一键添加</span><div class="hot-filter-row" id="fd-hot-filter">' +
+    ['all','meat','veggie','noodle','soup'].map(function(c) {
+      var labels = {all:'全部',meat:'荤菜',veggie:'素菜',noodle:'主食',soup:'汤品'};
+      return '<button class="hot-filter-btn ' + (fdState.hotFilter === c ? 'active' : '') + '" data-filter="' + c + '">' + labels[c] + '</button>';
+    }).join('') + '</div><div class="popular-scroll-row" id="fd-hot-list">' +
+    fdState.hotDishes.map(function(d, i) {
+      return '<div class="popular-item" data-hot-idx="' + i + '"><span class="pop-emoji">' + d.emoji + '</span><span class="pop-name">' + d.name + '</span><span class="pop-add">+</span></div>';
+    }).join('') + '</div></div>' +
+    (isAdmin ? '<div class="add-bar"><button class="btn-add" id="fd-toggle-add">' + (fdState.adding ? '收起' : '+ 自定义菜品') + '</button></div>' : '') +
+    '<div id="fd-dish-list">' + fdState.groupedDishes.map(function(g) {
+      return '<div class="section"><div class="section-header"><span class="section-title">' + g.label + '</span><span class="section-count">' + g.items.length + '道</span></div><div class="dish-list">' +
+        g.items.map(function(d) {
+          return '<div class="dish-item">' + (d.image ? '<img class="item-img" src="' + d.image + '" />' : '<span class="item-emoji">' + d.emoji + '</span>') +
+            '<div class="item-body"><span class="item-name">' + d.name + '</span><span class="item-desc">' + d.desc + '</span></div>' +
+            (isAdmin ? '<button class="btn-del" data-del-id="' + d._id + '"><span class="del-icon">✕</span></button>' : '') + '</div>';
+        }).join('') + '</div></div>';
+    }).join('') + '</div>';
 
-  el.innerHTML = `
-    <div class="popular-section">
-      <span class="section-label">🔥 热门菜品 · 一键添加</span>
-      <div class="hot-filter-row" id="fd-hot-filter">
-        ${['all','meat','veggie','noodle','soup'].map(c => {
-          const labels = {all:'全部',meat:'荤菜',veggie:'素菜',noodle:'主食',soup:'汤品'};
-          return `<button class="hot-filter-btn ${state.hotFilter === c ? 'active' : ''}" data-filter="${c}">${labels[c]}</button>`;
-        }).join('')}
-      </div>
-      <div class="popular-scroll-row" id="fd-hot-list">
-        ${state.hotDishes.map((d, i) => `
-          <div class="popular-item" data-hot-idx="${i}">
-            <span class="pop-emoji">${d.emoji}</span>
-            <span class="pop-name">${d.name}</span>
-            <span class="pop-add">+</span>
-          </div>`).join('')}
-      </div>
-    </div>
-
-    ${isAdmin ? `<div class="add-bar"><button class="btn-add" id="fd-toggle-add">${state.adding ? '收起' : '+ 自定义菜品'}</button></div>` : ''}
-
-    <div id="fd-dish-list">
-      ${state.groupedDishes.map(g => `
-        <div class="section">
-          <div class="section-header"><span class="section-title">${g.label}</span><span class="section-count">${g.items.length}道</span></div>
-          <div class="dish-list">
-            ${g.items.map(d => `
-              <div class="dish-item">
-                ${d.image ? `<img class="item-img" src="${d.image}" />` : `<span class="item-emoji">${d.emoji}</span>`}
-                <div class="item-body"><span class="item-name">${d.name}</span><span class="item-desc">${d.desc}</span></div>
-                ${isAdmin ? `<button class="btn-del" data-del-id="${d._id}"><span class="del-icon">✕</span></button>` : ''}
-              </div>`).join('')}
-          </div>
-        </div>`).join('')}
-    </div>
-  `;
-
-  if (state.adding) renderForm();
+  if (fdState.adding) fdRenderForm();
 }
 
-function renderMembersTab() {
-  const el = document.getElementById('fd-tab-content');
+function fdRenderMembersTab() {
+  var el = document.getElementById('fd-tab-content');
   if (!el) return;
-
-  const isOwner = state.myRole === 'owner';
-
-  el.innerHTML = `
-    <div class="member-list">
-      ${state.members.map(m => `
-        <div class="member-item">
-          <span class="member-avatar">👤</span>
-          <div class="member-info">
-            <span class="member-name">${m.nickname || '匿名用户'}</span>
-            <span class="member-role role-${m.role}">${m.role === 'owner' ? '创建者' : m.role === 'admin' ? '管理员' : '成员'}</span>
-          </div>
-          ${(isOwner && m.role !== 'owner') ? `
-          <div class="member-actions">
-            ${m.role === 'admin'
-              ? `<button class="member-act-btn" data-action="revokeAdmin" data-uid="${m.userId}">取消管理</button>`
-              : `<button class="member-act-btn" data-action="setAdmin" data-uid="${m.userId}">设为管理</button>`}
-            <button class="member-act-btn danger" data-action="remove" data-uid="${m.userId}">移除</button>
-          </div>` : ''}
-        </div>`).join('')}
-    </div>
-  `;
+  var isOwner = fdState.myRole === 'owner';
+  el.innerHTML = '<div class="member-list">' + fdState.members.map(function(m) {
+    return '<div class="member-item"><span class="member-avatar">👤</span><div class="member-info"><span class="member-name">' + (m.nickname || '匿名用户') + '</span><span class="member-role role-' + m.role + '">' + (m.role === 'owner' ? '创建者' : m.role === 'admin' ? '管理员' : '成员') + '</span></div>' +
+      (isOwner && m.role !== 'owner' ? '<div class="member-actions">' + (m.role === 'admin' ? '<button class="member-act-btn" data-action="revokeAdmin" data-uid="' + m.userId + '">取消管理</button>' : '<button class="member-act-btn" data-action="setAdmin" data-uid="' + m.userId + '">设为管理</button>') + '<button class="member-act-btn danger" data-action="remove" data-uid="' + m.userId + '">移除</button></div>' : '') +
+      '</div>';
+  }).join('') + '</div>';
 }
 
-function renderForm() {
-  const el = document.getElementById('fd-form-area');
+function fdRenderForm() {
+  var el = document.getElementById('fd-form-area');
   if (!el) return;
-
-  el.innerHTML = `
-    <div class="add-form">
-      <div class="img-section">
-        <div class="img-picker">
-          ${state.form.image
-            ? `<img class="preview-img" src="${state.form.image}" />`
-            : `<div class="img-placeholder"><span class="img-icon">📷</span><span class="img-hint">上传菜品图片</span></div>`}
-        </div>
-        <div class="img-actions">
-          <label class="img-btn"><span class="img-btn-icon">📸</span><span class="img-btn-text">拍照</span><input type="file" accept="image/*" capture="camera" class="file-input" /></label>
-          <label class="img-btn"><span class="img-btn-icon">🖼️</span><span class="img-btn-text">相册</span><input type="file" accept="image/*" class="file-input" /></label>
-        </div>
-      </div>
-      <input class="input" placeholder="菜名（必填）" value="${escapeHtml(state.form.name)}" data-field="name" />
-      <input class="input" placeholder="Emoji（如 🍗，可选）" value="${escapeHtml(state.form.emoji)}" data-field="emoji" maxlength="2" />
-      <input class="input" placeholder="一句话描述（可选）" value="${escapeHtml(state.form.desc)}" data-field="desc" />
-      <div class="cat-row">
-        <span class="cat-label">分类</span>
-        ${['meat','veggie','noodle','soup'].map(c =>
-          `<button class="cat-btn ${state.form.category === c ? 'active' : ''}" data-cat="${c}">${CATEGORY_LABELS[c]}</button>`
-        ).join('')}
-      </div>
-      <button class="btn-confirm" id="fd-form-confirm">确认添加</button>
-    </div>
-  `;
+  var f = fdState.form;
+  el.innerHTML = '<div class="add-form"><div class="img-section"><div class="img-picker">' +
+    (f.image ? '<img class="preview-img" src="' + f.image + '" />' : '<div class="img-placeholder"><span class="img-icon">📷</span><span class="img-hint">上传菜品图片</span></div>') +
+    '</div><div class="img-actions"><label class="img-btn"><span class="img-btn-icon">📸</span><span class="img-btn-text">拍照</span><input type="file" accept="image/*" capture="camera" class="file-input" /></label><label class="img-btn"><span class="img-btn-icon">🖼️</span><span class="img-btn-text">相册</span><input type="file" accept="image/*" class="file-input" /></label></div></div>' +
+    '<input class="input" placeholder="菜名（必填）" value="' + (f.name||'') + '" data-field="name" />' +
+    '<input class="input" placeholder="Emoji（如 🍗，可选）" value="' + (f.emoji||'') + '" data-field="emoji" maxlength="2" />' +
+    '<input class="input" placeholder="一句话描述（可选）" value="' + (f.desc||'') + '" data-field="desc" />' +
+    '<div class="cat-row"><span class="cat-label">分类</span>' +
+    ['meat','veggie','noodle','soup'].map(function(c) {
+      return '<button class="cat-btn ' + (f.category === c ? 'active' : '') + '" data-cat="' + c + '">' + FD_CATEGORY_LABELS[c] + '</button>';
+    }).join('') + '</div>' +
+    '<button class="btn-confirm" id="fd-form-confirm">确认添加</button></div>';
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-// ---- 事件 ----
-function setupEvents() {
-  const page = document.getElementById('page-family-detail');
+function fdSetupEvents() {
+  var page = document.getElementById('page-family-detail');
   if (!page) return;
-
-  page.addEventListener('click', async (e) => {
-    // Tab 切换
-    const tab = e.target.closest('.tab');
-    if (tab) { state.currentTab = tab.dataset.tab; render(); return; }
-
-    // 热门分类
-    const filterBtn = e.target.closest('#fd-hot-filter .hot-filter-btn');
-    if (filterBtn) { state.hotFilter = filterBtn.dataset.filter; filterHotDishes(); renderDishesTab(); return; }
-
-    // 热门菜品添加
-    const hotItem = e.target.closest('#fd-hot-list .popular-item');
-    if (hotItem) { addPopular(parseInt(hotItem.dataset.hotIdx)); return; }
-
-    // 添加/收起
-    if (e.target.matches('#fd-toggle-add')) { state.adding = !state.adding; render(); return; }
-
-    // 表单确认
-    if (e.target.matches('#fd-form-confirm')) { addDish(); return; }
-
-    // 分类选择
-    const catBtn = e.target.closest('.cat-btn');
-    if (catBtn) { state.form.category = catBtn.dataset.cat; renderForm(); return; }
-
-    // 删除菜品
-    const delBtn = e.target.closest('.btn-del');
-    if (delBtn) { deleteDish(delBtn.dataset.delId); return; }
-
-    // 复制邀请码
-    if (e.target.matches('#fd-copy-invite')) { copyInviteCode(); return; }
-
-    // 分享（显示邀请码消息）
-    if (e.target.matches('#fd-share')) { showToast('邀请码: ' + state.inviteCode, 'none'); return; }
-
-    // 成员管理
-    const actBtn = e.target.closest('.member-act-btn');
-    if (actBtn) { handleManageMember(actBtn.dataset.uid, actBtn.dataset.action); return; }
-
-    // 退出家庭
-    if (e.target.matches('#fd-leave')) { leaveFamily(); return; }
+  page.addEventListener('click', function(e) {
+    var tab = e.target.closest('.tab');
+    if (tab) { fdState.currentTab = tab.dataset.tab; fdRender(); return; }
+    var filterBtn = e.target.closest('#fd-hot-filter .hot-filter-btn');
+    if (filterBtn) { fdState.hotFilter = filterBtn.dataset.filter; fdFilterHotDishes(); fdRenderDishesTab(); return; }
+    var hotItem = e.target.closest('#fd-hot-list .popular-item');
+    if (hotItem) { fdAddPopular(parseInt(hotItem.dataset.hotIdx)); return; }
+    if (e.target.matches('#fd-toggle-add')) { fdState.adding = !fdState.adding; fdRender(); return; }
+    if (e.target.matches('#fd-form-confirm')) { fdAddDish(); return; }
+    var catBtn = e.target.closest('.cat-btn');
+    if (catBtn) { fdState.form.category = catBtn.dataset.cat; fdRenderForm(); return; }
+    var delBtn = e.target.closest('.btn-del');
+    if (delBtn) { fdDeleteDish(delBtn.dataset.delId); return; }
+    if (e.target.matches('#fd-copy-invite')) { fdCopyInviteCode(); return; }
+    if (e.target.matches('#fd-share')) { showToast('邀请码: ' + fdState.inviteCode, 'none'); return; }
+    var actBtn = e.target.closest('.member-act-btn');
+    if (actBtn) { fdHandleManageMember(actBtn.dataset.uid, actBtn.dataset.action); return; }
+    if (e.target.matches('#fd-leave')) { fdLeaveFamily(); return; }
   });
-
-  // 表单输入
-  page.addEventListener('input', (e) => {
+  page.addEventListener('input', function(e) {
     if (e.target.classList.contains('input') && e.target.dataset.field) {
-      state.form[e.target.dataset.field] = e.target.value;
+      fdState.form[e.target.dataset.field] = e.target.value;
     }
   });
-
-  // 图片上传
-  page.addEventListener('change', (e) => {
-    if (e.target.type === 'file' && e.target.files[0]) {
-      processImage(e.target.files[0]);
-    }
+  page.addEventListener('change', function(e) {
+    if (e.target.type === 'file' && e.target.files[0]) fdProcessImage(e.target.files[0]);
   });
 }
 
-function init(params) {
-  state = { ...state, ...params, adding: false, form: { name: '', emoji: '', category: 'meat', desc: '', image: '' }, currentTab: 'dishes' };
+function initFamilyDetailPage(params) {
+  fdState.familyId = params.familyId || '';
+  fdState.familyName = params.familyName || '';
+  fdState.adding = false;
+  fdState.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
+  fdState.currentTab = 'dishes';
   document.title = params.familyName || '家庭详情';
-  loadAll();
-  filterHotDishes();
-  render();
-  setupEvents();
+  fdLoadAll();
+  fdFilterHotDishes();
+  fdRender();
+  fdSetupEvents();
 }
-
-
 
 
 // --- js/app.js ---
