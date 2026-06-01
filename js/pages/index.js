@@ -1,4 +1,4 @@
-// 随机开饭页面
+// 今天吃啥呀？页面
 
 // In combined mode, all deps are global — no imports needed
 
@@ -190,7 +190,7 @@ function renderSpinningBtn(spinning) {
   if (!el) return;
   el.disabled = spinning;
   el.classList.toggle('pressing', spinning);
-  el.innerHTML = spinning ? '挑选中...' : '🎲 随机开饭';
+  el.innerHTML = spinning ? '挑选中...' : '🎲 今天吃啥呀？';
 }
 
 async function loadFamilies() {
