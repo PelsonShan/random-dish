@@ -1,13 +1,9 @@
-// 菜品管理页面 — 替代 pages/manage/manage.js + manage.wxml
+// 菜品管理页面
 
-import { HOT_DISHES } from '../data.js';
-import { getMyDishes, saveMyDishes, STORAGE_KEY } from '../storage.js';
-import { showToast, showModal, vibrate } from '../utils.js';
+var MGR_CATEGORY_LABELS = { meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
+var MGR_CATEGORY_ORDER = ['meat', 'veggie', 'noodle', 'soup'];
 
-const CATEGORY_LABELS = { meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
-const CATEGORY_ORDER = ['meat', 'veggie', 'noodle', 'soup'];
-
-let state = {
+var mgrState = {
   dishes: [],
   grouped: [],
   hotDishes: HOT_DISHES,
@@ -17,243 +13,208 @@ let state = {
   _idCounter: 0
 };
 
-function loadDishes() {
-  state.dishes = getMyDishes();
-  state._idCounter = state.dishes.reduce((max, d) => Math.max(max, d.id || 0), 0);
-  state.grouped = groupByCategory(state.dishes);
+function mgrLoadDishes() {
+  mgrState.dishes = getMyDishes();
+  mgrState._idCounter = mgrState.dishes.reduce(function(max, d) { return Math.max(max, d.id || 0); }, 0);
+  mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
 }
 
-function groupByCategory(dishes) {
-  return CATEGORY_ORDER.map(cat => ({
-    label: CATEGORY_LABELS[cat],
-    key: cat,
-    items: dishes.filter(d => d.category === cat)
-  })).filter(g => g.items.length);
+function mgrGroupByCategory(dishes) {
+  return MGR_CATEGORY_ORDER.map(function(cat) {
+    return {
+      label: MGR_CATEGORY_LABELS[cat],
+      key: cat,
+      items: dishes.filter(function(d) { return d.category === cat; })
+    };
+  }).filter(function(g) { return g.items.length; });
 }
 
-function filterHotDishes() {
-  state.hotDishes = state.hotFilter === 'all'
+function mgrFilterHotDishes() {
+  mgrState.hotDishes = mgrState.hotFilter === 'all'
     ? HOT_DISHES
-    : HOT_DISHES.filter(d => d.category === state.hotFilter);
+    : HOT_DISHES.filter(function(d) { return d.category === mgrState.hotFilter; });
 }
 
-function addDish() {
-  if (!state.form.name.trim()) {
-    showToast('请输入菜名', 'none');
-    return;
-  }
-  const newDish = {
-    id: state._idCounter + 1,
-    name: state.form.name.trim(),
-    emoji: state.form.emoji || '🍽️',
-    desc: state.form.desc || '暂无描述',
-    category: state.form.category,
-    image: state.form.image || ''
+function mgrAddDish() {
+  if (!mgrState.form.name.trim()) { showToast('请输入菜名', 'none'); return; }
+  var newDish = {
+    id: mgrState._idCounter + 1,
+    name: mgrState.form.name.trim(),
+    emoji: mgrState.form.emoji || '🍽️',
+    desc: mgrState.form.desc || '暂无描述',
+    category: mgrState.form.category,
+    image: mgrState.form.image || ''
   };
-  state.dishes = [...state.dishes, newDish];
-  saveMyDishes(state.dishes);
-  state._idCounter++;
-  state.grouped = groupByCategory(state.dishes);
-  state.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
-  state.adding = false;
+  mgrState.dishes = mgrState.dishes.concat([newDish]);
+  saveMyDishes(mgrState.dishes);
+  mgrState._idCounter++;
+  mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
+  mgrState.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
+  mgrState.adding = false;
   showToast('添加成功', 'success');
-  render();
+  mgrRender();
 }
 
-function addPopular(index) {
-  const dish = state.hotDishes[index];
-  if (state.dishes.some(d => d.name === dish.name)) {
-    showToast(`${dish.name} 已存在`, 'none');
-    return;
+function mgrAddPopular(index) {
+  var dish = mgrState.hotDishes[index];
+  if (mgrState.dishes.some(function(d) { return d.name === dish.name; })) {
+    showToast(dish.name + ' 已存在', 'none'); return;
   }
-  const newDish = { id: state._idCounter + 1, ...dish, image: '' };
-  state.dishes = [...state.dishes, newDish];
-  saveMyDishes(state.dishes);
-  state._idCounter++;
-  state.grouped = groupByCategory(state.dishes);
-  showToast(`已添加 ${dish.name}`, 'success');
+  var newDish = { id: mgrState._idCounter + 1, name: dish.name, emoji: dish.emoji, desc: dish.desc, category: dish.category, image: '' };
+  mgrState.dishes = mgrState.dishes.concat([newDish]);
+  saveMyDishes(mgrState.dishes);
+  mgrState._idCounter++;
+  mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
+  showToast('已添加 ' + dish.name, 'success');
   vibrate(20);
-  render();
+  mgrRender();
 }
 
-async function deleteDish(id) {
-  const confirmed = await showModal('确认删除', '确定要删除这道菜吗？');
-  if (!confirmed) return;
-  state.dishes = state.dishes.filter(d => d.id !== id);
-  saveMyDishes(state.dishes);
-  state.grouped = groupByCategory(state.dishes);
-  render();
+function mgrDeleteDish(id) {
+  showModal('确认删除', '确定要删除这道菜吗？').then(function(confirmed) {
+    if (!confirmed) return;
+    mgrState.dishes = mgrState.dishes.filter(function(d) { return d.id !== id; });
+    saveMyDishes(mgrState.dishes);
+    mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
+    mgrRender();
+  });
 }
 
-function processImage(file) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    // 压缩图片到 200px 宽
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxW = 200;
-      const scale = maxW / img.width;
+function mgrProcessImage(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var maxW = 200;
+      var scale = maxW / img.width;
       canvas.width = maxW;
       canvas.height = img.height * scale;
-      const ctx = canvas.getContext('2d');
+      var ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-      state.form.image = dataUrl;
-      renderForm();
+      mgrState.form.image = canvas.toDataURL('image/jpeg', 0.6);
+      mgrRenderForm();
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-// ---- 渲染 ----
-function render() {
-  renderHotFilter();
-  renderHotList();
-  renderForm();
-  renderDishList();
-  renderAddBtn();
+function mgrRender() {
+  mgrRenderHotFilter();
+  mgrRenderHotList();
+  mgrRenderForm();
+  mgrRenderDishList();
+  mgrRenderAddBtn();
 }
 
-function renderHotFilter() {
-  const el = document.getElementById('manage-hot-filter');
+function mgrRenderHotFilter() {
+  var el = document.getElementById('manage-hot-filter');
   if (!el) return;
-  const cats = ['all', 'meat', 'veggie', 'noodle', 'soup'];
-  const labels = { all: '全部', meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
-  el.innerHTML = cats.map(c =>
-    `<button class="hot-filter-btn ${state.hotFilter === c ? 'active' : ''}" data-filter="${c}">${labels[c]}</button>`
-  ).join('');
+  var cats = ['all', 'meat', 'veggie', 'noodle', 'soup'];
+  var labels = { all: '全部', meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
+  el.innerHTML = cats.map(function(c) {
+    return '<button class="hot-filter-btn ' + (mgrState.hotFilter === c ? 'active' : '') + '" data-filter="' + c + '">' + labels[c] + '</button>';
+  }).join('');
 }
 
-function renderHotList() {
-  const el = document.getElementById('manage-hot-list');
+function mgrRenderHotList() {
+  var el = document.getElementById('manage-hot-list');
   if (!el) return;
-  el.innerHTML = state.hotDishes.map((d, i) => `
-    <div class="popular-item" data-index="${i}">
-      <span class="pop-emoji">${d.emoji}</span>
-      <span class="pop-name">${d.name}</span>
-      <span class="pop-add">+</span>
-    </div>`).join('');
+  el.innerHTML = mgrState.hotDishes.map(function(d, i) {
+    return '<div class="popular-item" data-index="' + i + '"><span class="pop-emoji">' + d.emoji + '</span><span class="pop-name">' + d.name + '</span><span class="pop-add">+</span></div>';
+  }).join('');
 }
 
-function renderAddBtn() {
-  const el = document.getElementById('manage-add-btn');
+function mgrRenderAddBtn() {
+  var el = document.getElementById('manage-add-btn');
   if (!el) return;
-  el.innerHTML = state.adding ? '收起' : '+ 自定义菜品';
+  el.innerHTML = mgrState.adding ? '收起' : '+ 自定义菜品';
 }
 
-function renderForm() {
-  const el = document.getElementById('manage-form');
-  if (!el) return;
-  if (!state.adding) { el.innerHTML = ''; return; }
-  el.innerHTML = `
-    <div class="img-section">
-      <div class="img-picker">
-        ${state.form.image
-          ? `<img class="preview-img" src="${state.form.image}" alt="预览" />`
-          : `<div class="img-placeholder"><span class="img-icon">📷</span><span class="img-hint">上传菜品图片</span></div>`}
-      </div>
-      <div class="img-actions">
-        <label class="img-btn"><span class="img-btn-icon">📸</span><span class="img-btn-text">拍照</span><input type="file" accept="image/*" capture="camera" class="file-input" /></label>
-        <label class="img-btn"><span class="img-btn-icon">🖼️</span><span class="img-btn-text">相册</span><input type="file" accept="image/*" class="file-input" /></label>
-      </div>
-    </div>
-    <input class="input" placeholder="菜名（必填）" value="${escapeHtml(state.form.name)}" data-field="name" />
-    <input class="input" placeholder="Emoji（如 🍗，可选）" value="${escapeHtml(state.form.emoji)}" data-field="emoji" maxlength="2" />
-    <input class="input" placeholder="一句话描述（可选）" value="${escapeHtml(state.form.desc)}" data-field="desc" />
-    <div class="cat-row">
-      <span class="cat-label">分类</span>
-      ${['meat','veggie','noodle','soup'].map(c =>
-        `<button class="cat-btn ${state.form.category === c ? 'active' : ''}" data-cat="${c}">${CATEGORY_LABELS[c]}</button>`
-      ).join('')}
-    </div>
-    <button class="btn-confirm" id="manage-form-confirm">确认添加</button>
-  `;
-}
-
-function renderDishList() {
-  const el = document.getElementById('manage-dish-list');
-  if (!el) return;
-  if (!state.grouped.length) {
-    el.innerHTML = `<div class="empty"><span class="empty-icon">🍽️</span><span class="empty-text">还没有菜品</span><span class="empty-hint">从热门菜品快速添加，或自定义创建</span></div>`;
-    return;
-  }
-  el.innerHTML = state.grouped.map(g => `
-    <div class="section">
-      <div class="section-header"><span class="section-title">${g.label}</span><span class="section-count">${g.items.length}道</span></div>
-      <div class="dish-list">
-        ${g.items.map(d => `
-          <div class="dish-item">
-            ${d.image ? `<img class="item-img" src="${d.image}" alt="${d.name}" />` : `<span class="item-emoji">${d.emoji}</span>`}
-            <div class="item-body"><span class="item-name">${d.name}</span><span class="item-desc">${d.desc}</span></div>
-            <button class="btn-del" data-del-id="${d.id}"><span class="del-icon">✕</span></button>
-          </div>`).join('')}
-      </div>
-    </div>`).join('');
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
+function mgrEscapeHtml(str) {
+  var div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
 }
 
-// ---- 事件委托 ----
-function setupEvents() {
-  // 热门分类筛选
-  document.getElementById('manage-hot-filter').addEventListener('click', (e) => {
-    const btn = e.target.closest('.hot-filter-btn');
-    if (btn) {
-      state.hotFilter = btn.dataset.filter;
-      filterHotDishes();
-      render();
-    }
-  });
+function mgrRenderForm() {
+  var el = document.getElementById('manage-form');
+  if (!el) return;
+  if (!mgrState.adding) { el.innerHTML = ''; return; }
+  var f = mgrState.form;
+  el.innerHTML = '<div class="img-section"><div class="img-picker">' +
+    (f.image ? '<img class="preview-img" src="' + f.image + '" />' : '<div class="img-placeholder"><span class="img-icon">📷</span><span class="img-hint">上传菜品图片</span></div>') +
+    '</div><div class="img-actions">' +
+    '<label class="img-btn"><span class="img-btn-icon">📸</span><span class="img-btn-text">拍照</span><input type="file" accept="image/*" capture="camera" class="file-input" /></label>' +
+    '<label class="img-btn"><span class="img-btn-icon">🖼️</span><span class="img-btn-text">相册</span><input type="file" accept="image/*" class="file-input" /></label>' +
+    '</div></div>' +
+    '<input class="input" placeholder="菜名（必填）" value="' + mgrEscapeHtml(f.name) + '" data-field="name" />' +
+    '<input class="input" placeholder="Emoji（如 🍗，可选）" value="' + mgrEscapeHtml(f.emoji) + '" data-field="emoji" maxlength="2" />' +
+    '<input class="input" placeholder="一句话描述（可选）" value="' + mgrEscapeHtml(f.desc) + '" data-field="desc" />' +
+    '<div class="cat-row"><span class="cat-label">分类</span>' +
+    ['meat','veggie','noodle','soup'].map(function(c) {
+      return '<button class="cat-btn ' + (f.category === c ? 'active' : '') + '" data-cat="' + c + '">' + MGR_CATEGORY_LABELS[c] + '</button>';
+    }).join('') + '</div>' +
+    '<button class="btn-confirm" id="manage-form-confirm">确认添加</button>';
+}
 
-  // 热门菜品点击添加
-  document.getElementById('manage-hot-list').addEventListener('click', (e) => {
-    const item = e.target.closest('.popular-item');
-    if (item) addPopular(parseInt(item.dataset.index));
-  });
+function mgrRenderDishList() {
+  var el = document.getElementById('manage-dish-list');
+  if (!el) return;
+  if (!mgrState.grouped.length) {
+    el.innerHTML = '<div class="empty"><span class="empty-icon">🍽️</span><span class="empty-text">还没有菜品</span><span class="empty-hint">从热门菜品快速添加，或自定义创建</span></div>';
+    return;
+  }
+  el.innerHTML = mgrState.grouped.map(function(g) {
+    return '<div class="section"><div class="section-header"><span class="section-title">' + g.label + '</span><span class="section-count">' + g.items.length + '道</span></div><div class="dish-list">' +
+      g.items.map(function(d) {
+        return '<div class="dish-item">' +
+          (d.image ? '<img class="item-img" src="' + d.image + '" />' : '<span class="item-emoji">' + d.emoji + '</span>') +
+          '<div class="item-body"><span class="item-name">' + d.name + '</span><span class="item-desc">' + d.desc + '</span></div>' +
+          '<button class="btn-del" data-del-id="' + d.id + '"><span class="del-icon">✕</span></button></div>';
+      }).join('') + '</div></div>';
+  }).join('');
+}
 
-  // 添加按钮
-  document.getElementById('manage-add-btn').addEventListener('click', () => {
-    state.adding = !state.adding;
-    if (!state.adding) state.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
-    render();
+function mgrSetupEvents() {
+  document.getElementById('manage-hot-filter').addEventListener('click', function(e) {
+    var btn = e.target.closest('.hot-filter-btn');
+    if (btn) { mgrState.hotFilter = btn.dataset.filter; mgrFilterHotDishes(); mgrRender(); }
   });
-
-  // 表单 - 图片上传 / 输入 / 分类 / 确认
-  document.getElementById('manage-form').addEventListener('click', (e) => {
-    const btn = e.target.closest('#manage-form-confirm');
-    if (btn) { addDish(); return; }
-    const catBtn = e.target.closest('.cat-btn');
-    if (catBtn) { state.form.category = catBtn.dataset.cat; renderForm(); }
+  document.getElementById('manage-hot-list').addEventListener('click', function(e) {
+    var item = e.target.closest('.popular-item');
+    if (item) mgrAddPopular(parseInt(item.dataset.index));
   });
-  document.getElementById('manage-form').addEventListener('input', (e) => {
+  document.getElementById('manage-add-btn').addEventListener('click', function() {
+    mgrState.adding = !mgrState.adding;
+    if (!mgrState.adding) mgrState.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
+    mgrRender();
+  });
+  document.getElementById('manage-form').addEventListener('click', function(e) {
+    if (e.target.matches('#manage-form-confirm')) { mgrAddDish(); return; }
+    var catBtn = e.target.closest('.cat-btn');
+    if (catBtn) { mgrState.form.category = catBtn.dataset.cat; mgrRenderForm(); }
+  });
+  document.getElementById('manage-form').addEventListener('input', function(e) {
     if (e.target.classList.contains('input') && e.target.dataset.field) {
-      state.form[e.target.dataset.field] = e.target.value;
+      mgrState.form[e.target.dataset.field] = e.target.value;
     }
   });
-  document.getElementById('manage-form').addEventListener('change', (e) => {
+  document.getElementById('manage-form').addEventListener('change', function(e) {
     if (e.target.type === 'file' && e.target.files[0]) {
-      processImage(e.target.files[0]);
+      mgrProcessImage(e.target.files[0]);
     }
   });
-
-  // 删除菜品
-  document.getElementById('manage-dish-list').addEventListener('click', (e) => {
-    const delBtn = e.target.closest('.btn-del');
-    if (delBtn) deleteDish(parseInt(delBtn.dataset.delId));
+  document.getElementById('manage-dish-list').addEventListener('click', function(e) {
+    var delBtn = e.target.closest('.btn-del');
+    if (delBtn) mgrDeleteDish(parseInt(delBtn.dataset.delId));
   });
 }
 
-function init() {
-  loadDishes();
-  filterHotDishes();
-  render();
-  setupEvents();
+function initManagePage() {
+  mgrLoadDishes();
+  mgrFilterHotDishes();
+  mgrRender();
+  mgrSetupEvents();
 }
-
-export { init as initManagePage };

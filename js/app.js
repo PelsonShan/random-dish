@@ -50,7 +50,7 @@ function navigateTo(page, params) {
   if (page === 'family-detail') {
     document.title = params.familyName || '家庭详情';
   } else {
-    document.title = '随机开饭';
+    document.title = '今天吃啥呀？';
   }
 
   route.init(params);
