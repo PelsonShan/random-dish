@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [android]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Dependencies
+        working-directory: android-project
+        run: npm install
+
+      - name: Build Web Assets
+        run: |
+          cp android-project/www/index.html android-project/www/index.html.bak
+          # web assets are already in www/
+
+      - name: Add Android Platform
+        working-directory: android-project
+        run: npx cap add android
+
+      - name: Build APK
+        working-directory: android-project/android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: random-dish-apk
+          path: android-project/android/app/build/outputs/apk/debug/app-debug.apk

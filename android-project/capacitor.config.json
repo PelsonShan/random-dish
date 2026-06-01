@@ -1,0 +1,9 @@
+{
+  "appId": "com.pelsonshan.randomdish",
+  "appName": "随机开饭",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}
