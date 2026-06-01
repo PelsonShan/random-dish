@@ -1,6 +1,6 @@
 {
   "appId": "com.pelsonshan.randomdish",
-  "appName": "随机开饭",
+  "appName": "今天吃啥呀？",
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
