@@ -1,58 +1,40 @@
 name: Build APK
-
 on:
-  push:
-    branches: [android]
+  push: { branches: [android] }
   workflow_dispatch:
-
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+        with: { distribution: temurin, java-version: 17 }
 
       - name: Setup Android SDK
         run: |
-          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-          echo "sdk.dir=/usr/local/lib/android/sdk" >> local.properties
-          ls -la /usr/local/lib/android/sdk/ 2>/dev/null || echo "SDK not found, installing..."
-          if [ ! -d /usr/local/lib/android/sdk ]; then
-            mkdir -p /usr/local/lib/android/sdk/cmdline-tools
-            cd /usr/local/lib/android/sdk/cmdline-tools
-            curl -sL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
-            unzip -qo tools.zip
-            mv cmdline-tools latest 2>/dev/null || true
-            rm tools.zip
-            yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-            /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          ls $ANDROID_HOME/platforms/ 2>/dev/null
+          ls $ANDROID_HOME/build-tools/ 2>/dev/null
+          # Install missing components
+          if [ ! -d "$ANDROID_HOME/platforms/android-34" ]; then
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" 2>/dev/null || true
+          fi
+          if [ ! -d "$ANDROID_HOME/build-tools/34.0.0" ]; then
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" 2>/dev/null || true
           fi
 
-      - name: Install Dependencies
-        working-directory: android-project
-        run: npm install
-
-      - name: Init Android
-        working-directory: android-project
-        run: npx cap add android
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: 8.7 }
 
       - name: Build APK
-        working-directory: android-project/android
-        run: ./gradlew assembleDebug
+        working-directory: java-app
+        run: |
+          echo "sdk.dir=/usr/local/lib/android/sdk" > local.properties
+          gradle wrapper --gradle-version 8.7
+          ./gradlew assembleDebug --stacktrace
 
+      - uses: actions/upload-artifact@v4
+        with: { name: app-debug, path: java-app/app/build/outputs/apk/debug/app-debug.apk }
       - uses: softprops/action-gh-release@v2
-        with:
-          name: "最新版本"
-          tag_name: "latest"
-          files: android-project/android/app/build/outputs/apk/debug/app-debug.apk
-          prerelease: true
-          make_latest: true
+        with: { name: "最新版本", tag_name: "latest", files: java-app/app/build/outputs/apk/debug/app-debug.apk, prerelease: true, make_latest: true }
