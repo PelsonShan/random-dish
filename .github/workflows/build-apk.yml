@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
@@ -20,28 +20,39 @@ jobs:
         with:
           node-version: 22
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.7
+      - name: Setup Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "sdk.dir=/usr/local/lib/android/sdk" >> local.properties
+          ls -la /usr/local/lib/android/sdk/ 2>/dev/null || echo "SDK not found, installing..."
+          if [ ! -d /usr/local/lib/android/sdk ]; then
+            mkdir -p /usr/local/lib/android/sdk/cmdline-tools
+            cd /usr/local/lib/android/sdk/cmdline-tools
+            curl -sL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
+            unzip -qo tools.zip
+            mv cmdline-tools latest 2>/dev/null || true
+            rm tools.zip
+            yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+            /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          fi
 
-      - name: Install Capacitor
+      - name: Install Dependencies
         working-directory: android-project
         run: npm install
 
-      - name: Add Android Platform
+      - name: Init Android
         working-directory: android-project
         run: npx cap add android
 
       - name: Build APK
         working-directory: android-project/android
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
+        run: ./gradlew assembleDebug
 
-      - uses: actions/upload-artifact@v4
+      - uses: softprops/action-gh-release@v2
         with:
-          name: app-debug
-          path: android-project/android/app/build/outputs/apk/debug/app-debug.apk
+          name: "最新版本"
+          tag_name: "latest"
+          files: android-project/android/app/build/outputs/apk/debug/app-debug.apk
+          prerelease: true
+          make_latest: true
