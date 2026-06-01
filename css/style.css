@@ -1012,3 +1012,95 @@ body {
   background: #FDF2F8;
   color: var(--pink);
 }
+
+/* ============ 历史记录增强 ============ */
+.history {
+  margin-top: 20px;
+  padding: 0;
+}
+.history-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-light-purple);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.history-title::before {
+  content: '📜';
+  font-size: 16px;
+}
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: var(--card-shadow);
+  flex-wrap: wrap;
+}
+.history-combo {
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  padding: 4px 12px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.history-source {
+  font-size: 12px;
+  color: var(--purple);
+  font-weight: 600;
+  background: #F5F3FF;
+  padding: 3px 10px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.history-name {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 600;
+  padding: 3px 0;
+}
+
+/* ============ 历史展开按钮 ============ */
+.history-toggle {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  background: none;
+  border: 1.5px dashed rgba(139,92,246,0.3);
+  border-radius: 12px;
+  color: var(--purple);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s;
+}
+.history-toggle:active {
+  background: rgba(139,92,246,0.06);
+}
+
+/* ============ 三菜一汤 2x2 网格 ============ */
+.multi-area.grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 0;
+}
+.multi-area.grid-2x2 .multi-card {
+  min-width: auto;
+}
+.multi-area.grid-2x2.spinning {
+  animation: shake 0.15s infinite;
+}
