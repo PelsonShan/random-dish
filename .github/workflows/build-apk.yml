@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -12,27 +12,23 @@ jobs:
 
       - name: Setup Android SDK
         run: |
-          export ANDROID_HOME=/usr/local/lib/android/sdk
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          ls $ANDROID_HOME/platforms/ 2>/dev/null
-          ls $ANDROID_HOME/build-tools/ 2>/dev/null
-          # Install missing components
-          if [ ! -d "$ANDROID_HOME/platforms/android-34" ]; then
-            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" 2>/dev/null || true
-          fi
-          if [ ! -d "$ANDROID_HOME/build-tools/34.0.0" ]; then
-            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" 2>/dev/null || true
-          fi
+          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          export ANDROID_HOME=$ANDROID_SDK_ROOT
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "sdk.dir=$ANDROID_SDK_ROOT" >> java-app/local.properties
+          ls -la $ANDROID_SDK_ROOT/platforms/ 2>/dev/null || echo "no-platforms"
+          ls -la $ANDROID_SDK_ROOT/build-tools/ 2>/dev/null || echo "no-build-tools"
+          # Accept licenses and install needed packages
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: 8.7 }
 
       - name: Build APK
         working-directory: java-app
-        run: |
-          echo "sdk.dir=/usr/local/lib/android/sdk" > local.properties
-          gradle wrapper --gradle-version 8.7
-          ./gradlew assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace
 
       - uses: actions/upload-artifact@v4
         with: { name: app-debug, path: java-app/app/build/outputs/apk/debug/app-debug.apk }
