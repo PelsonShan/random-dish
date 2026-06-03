@@ -2364,7 +2364,7 @@ function fdRender() {
 
   el.innerHTML = (isAdmin ? '<div class="invite-bar"><div class="invite-code"><span class="invite-label">邀请码</span><span class="invite-value">' + fdState.inviteCode + '</span></div><div class="invite-actions"><button class="invite-btn" id="fd-copy-invite">📋 复制</button><button class="invite-btn invite-share" id="fd-share">📱 扫码分享</button></div></div>' : '') +
     '<div class="tab-bar"><button class="tab ' + (fdState.currentTab === 'dishes' ? 'active' : '') + '" data-tab="dishes">🍽️ 家庭菜单</button><button class="tab ' + (fdState.currentTab === 'members' ? 'active' : '') + '" data-tab="members">👥 成员 (' + fdState.members.length + ')</button></div>' +
-    '<div id="fd-tab-content"></div><div id="fd-form-area"></div><button class="btn-leave" id="fd-leave">退出家庭</button>';
+    '<div id="fd-form-area"></div><div id="fd-tab-content"></div><button class="btn-leave" id="fd-leave">退出家庭</button>';
 
   if (fdState.currentTab === 'dishes') fdRenderDishesTab();
   else fdRenderMembersTab();
