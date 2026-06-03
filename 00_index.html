@@ -1193,6 +1193,17 @@ body {
 .invite-bar { position: relative; }
 .invite-bar { padding-bottom: 12px; }
 
+
+.card-actions { display: flex; align-items: center; gap: 6px; }
+.card-qr-btn {
+  width: 32px; height: 32px; border-radius: 16px;
+  border: none; background: #FDF2F8; color: var(--pink);
+  font-size: 16px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.card-qr-btn:active { background: #FBCFE8; }
+
 </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
 </head>
@@ -2154,7 +2165,7 @@ function famRender() {
   var html = '<div class="family-list"><div class="list-header"><span class="list-title">我的家庭</span><span class="list-count">' + famState.families.length + ' 个</span></div>';
   famState.families.forEach(function(f) {
     var roleLabel = f.role === 'owner' ? '创建者' : f.role === 'admin' ? '管理员' : '成员';
-    html += '<div class="family-card" data-family-id="' + f._id + '" data-family-name="' + f.name + '"><div class="card-left"><span class="card-icon">🏠</span><div class="card-info"><span class="card-name">' + f.name + '</span><span class="card-meta">' + (f.memberCount || 0) + ' 位成员 · ' + roleLabel + '</span></div></div><div class="card-right"><div class="card-tags"><span class="tag tag-dish">' + (f.dishCount || 0) + ' 道菜</span>' + (f.role === 'owner' || f.role === 'admin' ? '<span class="tag tag-code">邀请码 ' + f.inviteCode + '</span>' : '') + '</div><span class="card-arrow">›</span></div></div>';
+    html += '<div class="family-card" data-family-id="' + f._id + '" data-family-name="' + f.name + '"><div class="card-left"><span class="card-icon">🏠</span><div class="card-info"><span class="card-name">' + f.name + '</span><span class="card-meta">' + (f.memberCount || 0) + ' 位成员 · ' + roleLabel + '</span></div></div><div class="card-right"><div class="card-tags"><span class="tag tag-dish">' + (f.dishCount || 0) + ' 道菜</span>' + (f.role === 'owner' || f.role === 'admin' ? '<span class="tag tag-code">邀请码 ' + f.inviteCode + '</span>' : '') + '</div><div class="card-actions">' + (f.role === 'owner' || f.role === 'admin' ? '<button class="card-qr-btn" data-qr-code="' + f.inviteCode + '" title="扫码分享">📱</button>' : '') + '<span class="card-arrow">›</span></div></div></div>';
   });
   html += '<div class="bottom-actions"><button class="btn btn-outline-sm" id="family-create-btn2">+ 创建家庭</button><button class="btn btn-outline-sm" id="family-join-btn2">🔑 加入家庭</button><button class="scan-btn" id="family-scan-btn2">📷 扫码加入</button></div></div><div id="family-join-form"></div>';
   el.innerHTML = html;
@@ -2189,7 +2200,13 @@ function famSetupEvents() {
     if (card) { navigateTo('family-detail', { familyId: card.dataset.familyId, familyName: card.dataset.familyName }); return; }
     if (e.target.matches('#family-create-btn, #family-create-btn2')) { famState.showCreate = true; famState.showJoin = false; famState.createName = ''; famRender(); return; }
     if (e.target.matches('#family-join-btn, #family-join-btn2')) { famState.showJoin = true; famState.showCreate = false; famState.joinCode = ''; famRender(); return; }
-    if (e.target.matches('#family-scan-btn, #family-scan-btn2')) { openScanner(); return; }
+    if (e.target.closest('.card-qr-btn')) {
+    var qrBtn = e.target.closest('.card-qr-btn');
+    showQrModal(qrBtn.dataset.qrCode);
+    e.stopPropagation();
+    return;
+  }
+  if (e.target.matches('#family-scan-btn, #family-scan-btn2')) { openScanner(); return; }
     if (e.target.matches('#create-close')) { famState.showCreate = false; famRender(); return; }
     if (e.target.matches('#join-close')) { famState.showJoin = false; famRender(); return; }
     if (e.target.matches('#create-confirm')) {
