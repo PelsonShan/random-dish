@@ -1,0 +1,3214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#EC4899">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <title>今天吃啥呀？</title>
+  <style>
+/* ============ 全局 ============ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --pink: #EC4899;
+  --purple: #8B5CF6;
+  --amber: #F59E0B;
+  --bg-start: #FDF2F8;
+  --bg-end: #FEF3C7;
+  --text: #332F3A;
+  --text-secondary: #635F69;
+  --text-muted: #9CA3AF;
+  --text-light-purple: #A78BFA;
+  --white: #FFFFFF;
+  --card-bg: rgba(255,255,255,0.75);
+  --card-shadow: 0 4px 14px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9);
+  --radius: 20px;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', sans-serif;
+  background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+body {
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ============ 导航栏 ============ */
+#nav-bar {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--pink);
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 8px;
+  min-height: 48px;
+}
+#nav-title {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+#back-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  display: none;
+}
+
+/* ============ 页面容器 ============ */
+.page-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px 100px;
+  display: none;
+}
+#page-index { display: flex; }
+
+/* ============ Tab Bar ============ */
+#tab-bar {
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: var(--white);
+  border-top: 1px solid rgba(0,0,0,0.05);
+  z-index: 100;
+  padding: 4px 0;
+  padding-bottom: max(4px, env(safe-area-inset-bottom));
+}
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-light-purple);
+  font-size: 11px;
+  font-weight: 600;
+  transition: color 0.2s;
+  gap: 2px;
+}
+.tab-item.active {
+  color: var(--pink);
+}
+.tab-icon {
+  font-size: 22px;
+}
+
+/* ============ Toast ============ */
+#toast {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 10px 24px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ============ Modal ============ */
+#modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+#modal-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+#modal-box {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 24px 20px 20px;
+  width: calc(100% - 64px);
+  max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  text-align: center;
+}
+#modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  display: block;
+  margin-bottom: 10px;
+}
+#modal-content {
+  font-size: 15px;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+#modal-actions {
+  display: flex;
+  gap: 12px;
+}
+#modal-cancel, #modal-confirm {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+#modal-cancel {
+  background: #F3F4F6;
+  color: var(--text-secondary);
+}
+#modal-confirm {
+  background: linear-gradient(135deg, var(--pink), var(--amber));
+  color: white;
+}
+
+/* ============ Loading ============ */
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.25);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+#loading-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.loading-box {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 20px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #F3F4F6;
+  border-top-color: var(--pink);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ============ 公用按钮 ============ */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  color: white;
+  box-shadow: 0 4px 14px rgba(236, 72, 153, 0.3);
+}
+.btn-outline {
+  background: var(--white);
+  color: var(--purple);
+  border: 2px solid var(--purple);
+}
+.btn-outline-sm {
+  flex: 1;
+  padding: 8px 16px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: rgba(255,255,255,0.7);
+  color: var(--purple);
+  border: 1.5px dashed rgba(139,92,246,0.3);
+  text-align: center;
+}
+.btn-disabled {
+  height: 44px;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  width: 100%;
+  background: #E5E7EB;
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.btn-leave {
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid rgba(236,72,153,0.25);
+  background: transparent;
+  color: var(--pink);
+  cursor: pointer;
+  width: 100%;
+}
+
+/* ============ Blob 装饰 ============ */
+/* 保留占位但简化 */
+
+/* ============ Index 页面 ============ */
+.header {
+  text-align: center;
+  padding: 28px 0 16px;
+}
+.title {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  display: block;
+}
+.subtitle {
+  font-size: 14px;
+  color: var(--text-light-purple);
+  margin-top: 4px;
+  display: block;
+}
+
+/* 菜单源选择器 */
+#source-selector {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.source-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  background: rgba(255,255,255,0.7);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.source-btn.active {
+  background: var(--purple);
+  color: white;
+}
+
+/* 组套选择 */
+#combo-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  justify-content: center;
+}
+.combo-seg {
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  background: rgba(255,255,255,0.7);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.combo-seg.active {
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  color: white;
+  box-shadow: 0 2px 10px rgba(236,72,153,0.25);
+}
+
+/* 结果展示区 */
+.single-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 0;
+  transition: transform 0.15s;
+}
+.single-area.spinning {
+  animation: shake 0.15s infinite;
+}
+@keyframes shake {
+  0%,100% { transform: rotate(0deg); }
+  25% { transform: rotate(-2deg); }
+  75% { transform: rotate(2deg); }
+}
+.single-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 36px;
+  background: var(--card-bg);
+  border-radius: 28px;
+  box-shadow: var(--card-shadow);
+}
+.single-card.placeholder {
+  opacity: 0.5;
+}
+.single-emoji {
+  font-size: 72px;
+  line-height: 1;
+}
+.single-img {
+  width: 140px;
+  height: 140px;
+  border-radius: 20px;
+  object-fit: cover;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+.single-name {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* 多个菜品 */
+.multi-area {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 24px 0;
+  flex-wrap: wrap;
+  transition: transform 0.15s;
+}
+.multi-area.spinning {
+  animation: shake 0.15s infinite;
+}
+.multi-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: var(--card-bg);
+  border-radius: 22px;
+  box-shadow: var(--card-shadow);
+  min-width: 100px;
+}
+.multi-emoji { font-size: 44px; }
+.multi-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.multi-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* 历史 */
+.history {
+  margin-top: 16px;
+  padding: 12px 0;
+}
+.history-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-light-purple);
+  margin-bottom: 8px;
+  display: block;
+}
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.history-combo {
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+.history-source {
+  font-size: 11px;
+  color: var(--purple);
+  font-weight: 500;
+}
+.history-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* 随机按钮 */
+.btn-random {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 52px;
+  background: linear-gradient(135deg, var(--pink), var(--amber));
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  border-radius: 28px;
+  border: none;
+  box-shadow: 0 6px 20px rgba(236,72,153,0.3), inset 0 2px 0 rgba(255,255,255,0.3);
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: auto;
+}
+.btn-random:active { transform: scale(0.96); }
+.btn-random.pressing { opacity: 0.7; transform: scale(0.96); }
+.btn-random:disabled { cursor: not-allowed; }
+
+/* 家庭入口按钮 */
+.family-entry {
+  text-align: center;
+  margin-top: 12px;
+}
+.btn-family-entry {
+  background: none;
+  border: 1.5px dashed rgba(139,92,246,0.4);
+  color: var(--purple);
+  padding: 8px 24px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ============ Manage 页面 ============ */
+.section-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--purple);
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* 热门菜品横向滚动 */
+.hot-filter-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+.hot-filter-btn {
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(255,255,255,0.7);
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.hot-filter-btn.active {
+  background: var(--purple);
+  color: white;
+}
+
+.popular-scroll-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.popular-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--card-bg);
+  border-radius: 14px;
+  padding: 12px 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  min-width: 80px;
+  transition: transform 0.15s;
+  border: none;
+}
+.popular-item:active { transform: scale(0.94); }
+.pop-emoji { font-size: 32px; }
+.pop-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.pop-add {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(236,72,153,0.3);
+}
+
+/* 添加按钮 */
+.add-bar { margin-bottom: 12px; }
+.btn-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  background: rgba(255,255,255,0.7);
+  color: var(--pink);
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 16px;
+  border: 2px dashed rgba(236,72,153,0.3);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  cursor: pointer;
+  width: 100%;
+}
+
+/* 表单 */
+.add-form {
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 20px 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--card-shadow);
+}
+.img-section { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.img-picker {
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #FDF2F8;
+  border: 2px dashed rgba(236,72,153,0.3);
+}
+.preview-img { width: 100%; height: 100%; object-fit: cover; }
+.img-placeholder {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.img-icon { font-size: 32px; margin-bottom: 4px; }
+.img-hint { font-size: 11px; color: var(--text-light-purple); }
+.img-actions { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.img-btn {
+  display: flex; align-items: center; gap: 8px;
+  height: 44px; padding: 0 16px;
+  background: #FDF2F8; border-radius: 14px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.03);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  position: relative;
+  overflow: hidden;
+}
+.img-btn:active { background: #FCE9F2; }
+.img-btn-icon { font-size: 20px; }
+.img-btn-text { font-size: 14px; font-weight: 600; color: var(--text); }
+.file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.input {
+  width: 100%;
+  height: 44px;
+  background: #FDF2F8;
+  border-radius: 14px;
+  padding: 0 14px;
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: var(--text);
+  border: none;
+  outline: none;
+}
+.input:focus {
+  background: #FCE9F2;
+  box-shadow: 0 0 0 2px rgba(236,72,153,0.2);
+}
+.cat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.cat-label { font-size: 13px; color: var(--text-secondary); font-weight: 600; margin-right: 2px; }
+.cat-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: #FDF2F8;
+  border-radius: 16px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+}
+.cat-btn.active {
+  color: white;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  font-weight: 700;
+}
+.btn-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 44px;
+  background: linear-gradient(135deg, var(--pink), var(--amber));
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 18px;
+  border: none;
+  box-shadow: 0 4px 14px rgba(236,72,153,0.3);
+  cursor: pointer;
+}
+
+/* 菜品列表 */
+.section { margin-bottom: 20px; }
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-left: 2px;
+}
+.section-title { font-size: 16px; font-weight: 800; color: var(--text); }
+.section-count { font-size: 12px; color: var(--text-light-purple); font-weight: 600; }
+
+.dish-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.dish-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--card-bg);
+  border-radius: 18px;
+  padding: 16px 10px 12px;
+  width: calc(50% - 5px);
+  box-sizing: border-box;
+  position: relative;
+  box-shadow: var(--card-shadow);
+}
+.item-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.item-emoji { font-size: 40px; flex-shrink: 0; }
+.item-body { width: 100%; text-align: center; overflow: hidden; }
+.item-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-desc {
+  font-size: 11px;
+  color: var(--text-light-purple);
+  display: block;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-del {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(253,242,248,0.9);
+  border: none;
+  cursor: pointer;
+}
+.del-icon { font-size: 12px; color: var(--pink); font-weight: 700; }
+.btn-del:active { background: var(--pink); }
+.btn-del:active .del-icon { color: white; }
+
+/* 空状态 */
+.empty { text-align: center; margin-top: 60px; }
+.empty-icon { font-size: 56px; display: block; margin-bottom: 10px; }
+.empty-text { font-size: 18px; color: var(--text-secondary); font-weight: 700; display: block; margin-bottom: 4px; }
+.empty-hint { font-size: 13px; color: var(--text-light-purple); display: block; }
+
+/* ============ Family 页面 ============ */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+.empty-badge { font-size: 64px; margin-bottom: 12px; }
+.empty-title { font-size: 20px; font-weight: 700; color: var(--text); display: block; margin-bottom: 6px; }
+.empty-desc { font-size: 14px; color: var(--text-light-purple); display: block; margin-bottom: 24px; }
+.empty-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 240px; }
+
+.form-card {
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 20px 18px 16px;
+  margin-bottom: 20px;
+  box-shadow: var(--card-shadow);
+}
+.form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.form-title { font-size: 18px; font-weight: 700; color: var(--text); }
+.form-close {
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px;
+}
+.form-card .input {
+  background: #FDF2F8;
+}
+
+.family-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.list-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  padding: 0 4px;
+}
+.list-title { font-size: 16px; font-weight: 800; color: var(--text); }
+.list-count { font-size: 12px; color: var(--text-light-purple); font-weight: 600; }
+
+.family-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card-bg);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.family-card:active { transform: scale(0.98); }
+.card-left { display: flex; align-items: center; gap: 12px; }
+.card-icon { font-size: 28px; }
+.card-info { display: flex; flex-direction: column; gap: 2px; }
+.card-name { font-size: 16px; font-weight: 700; color: var(--text); }
+.card-meta { font-size: 12px; color: var(--text-light-purple); font-weight: 500; }
+.card-right { display: flex; align-items: center; gap: 8px; }
+.card-tags { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.tag {
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tag-dish { background: #FDF2F8; color: var(--pink); }
+.tag-code { background: #F5F3FF; color: var(--purple); }
+.card-arrow { font-size: 22px; color: var(--text-muted); }
+
+.bottom-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* ============ Family Detail 页面 ============ */
+.invite-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.8);
+  border-radius: 16px;
+  padding: 10px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+.invite-code { display: flex; align-items: center; gap: 8px; }
+.invite-label { font-size: 12px; color: var(--text-muted); }
+.invite-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--purple);
+  letter-spacing: 2px;
+}
+.invite-actions { display: flex; gap: 8px; }
+.invite-btn {
+  padding: 5px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #F5F3FF;
+  color: var(--purple);
+  border: none;
+  cursor: pointer;
+}
+.invite-share { background: #FDF2F8; color: var(--pink); }
+
+.tab-bar {
+  display: flex;
+  background: rgba(255,255,255,0.7);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab.active {
+  color: var(--pink);
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(236,72,153,0.15);
+}
+
+/* 成员列表 */
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+}
+.member-avatar { font-size: 32px; }
+.member-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.member-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.member-role {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  display: inline-block;
+  width: fit-content;
+  font-weight: 500;
+}
+.role-owner { background: #FEF3C7; color: #B45309; }
+.role-admin { background: #F5F3FF; color: var(--purple); }
+.role-member { background: #F3F4F6; color: var(--text-secondary); }
+.member-actions { display: flex; gap: 6px; }
+.member-act-btn {
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: #F5F3FF;
+  color: var(--purple);
+}
+.member-act-btn.danger {
+  background: #FDF2F8;
+  color: var(--pink);
+}
+
+/* ============ 历史记录增强 ============ */
+.history {
+  margin-top: 20px;
+  padding: 0;
+}
+.history-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-light-purple);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.history-title::before {
+  content: '📜';
+  font-size: 16px;
+}
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: var(--card-shadow);
+  flex-wrap: wrap;
+}
+.history-combo {
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  padding: 4px 12px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.history-source {
+  font-size: 12px;
+  color: var(--purple);
+  font-weight: 600;
+  background: #F5F3FF;
+  padding: 3px 10px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.history-name {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 600;
+  padding: 3px 0;
+}
+
+/* ============ 历史展开按钮 ============ */
+.history-toggle {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  background: none;
+  border: 1.5px dashed rgba(139,92,246,0.3);
+  border-radius: 12px;
+  color: var(--purple);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s;
+}
+.history-toggle:active {
+  background: rgba(139,92,246,0.06);
+}
+
+/* ============ 三菜一汤 2x2 网格 ============ */
+.multi-area.grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 0;
+}
+.multi-area.grid-2x2 .multi-card {
+  min-width: auto;
+}
+.multi-area.grid-2x2.spinning {
+  animation: shake 0.15s infinite;
+}
+
+
+/* ============ QR Code & Scanner ============ */
+.qr-modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.qr-modal {
+  background: white; border-radius: 20px; padding: 24px;
+  width: min(320px, 90vw); text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.qr-modal-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.qr-modal-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+.qr-modal-code { display: flex; justify-content: center; margin-bottom: 16px; }
+.qr-modal-code svg { width: 200px; height: 200px; border-radius: 12px; }
+.qr-invite-text {
+  font-size: 18px; font-weight: 800; letter-spacing: 3px;
+  color: var(--pink); margin-bottom: 8px;
+}
+.qr-modal-actions { display: flex; gap: 10px; justify-content: center; }
+.qr-modal-btn {
+  padding: 10px 20px; border-radius: 12px; border: none;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.qr-modal-btn.primary { background: var(--pink); color: white; }
+.qr-modal-btn.secondary { background: #F3F4F6; color: var(--text); }
+.qr-modal-close {
+  position: absolute; top: 12px; right: 16px;
+  background: none; border: none; font-size: 20px; cursor: pointer;
+  color: var(--text-muted);
+}
+
+/* Scanner */
+.scanner-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: black; z-index: 9998;
+  display: flex; flex-direction: column; align-items: center;
+}
+.scanner-viewport {
+  width: 100%; flex: 1; position: relative; overflow: hidden;
+}
+.scanner-viewport video {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.scanner-frame {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 220px; height: 220px;
+  border: 3px solid var(--pink);
+  border-radius: 16px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+}
+.scanner-hint {
+  color: white; font-size: 14px; padding: 20px;
+  text-align: center;
+}
+.scanner-close-btn {
+  margin: 20px; padding: 12px 40px; background: rgba(255,255,255,0.15);
+  color: white; border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 25px; font-size: 16px; cursor: pointer;
+}
+.scan-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 20px; background: var(--pink); color: white;
+  border: none; border-radius: 25px; font-size: 15px; font-weight: 600;
+  cursor: pointer; margin: 0 auto 12px;
+}
+.scan-btn:active { opacity: 0.8; }
+
+.invite-bar { position: relative; }
+.invite-bar { padding-bottom: 12px; }
+
+
+.card-actions { display: flex; align-items: center; gap: 6px; }
+.card-qr-btn {
+  width: 32px; height: 32px; border-radius: 16px;
+  border: none; background: #FDF2F8; color: var(--pink);
+  font-size: 16px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.card-qr-btn:active { background: #FBCFE8; }
+
+</style>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+</head>
+<body>
+  <div id="app">
+    <div id="nav-bar">
+      <button id="back-btn">‹ 返回</button>
+      <span id="nav-title">今天吃啥呀？</span>
+      <span style="width:40px;"></span>
+    </div>
+
+    <!-- 首页 - 随机开饭 -->
+    <div class="page-container" id="page-index">
+      <div class="header">
+        <span class="title">今天吃什么？</span>
+        <span class="subtitle">把选择交给命运 ✨</span>
+      </div>
+
+      <div id="source-selector"></div>
+      <div id="combo-bar"></div>
+      <div id="result-area"></div>
+
+      <button class="btn-random" id="btn-random">🎲 吃啥呀</button>
+
+      <div id="history-area"></div>
+    </div>
+
+    <!-- 菜品管理 -->
+    <div class="page-container" id="page-manage">
+      <div class="popular-section">
+        <span class="section-label">🔥 热门菜品 · 一键添加</span>
+        <div class="hot-filter-row" id="manage-hot-filter"></div>
+        <div class="popular-scroll-row" id="manage-hot-list"></div>
+      </div>
+      <div class="add-bar">
+        <button class="btn-add" id="manage-add-btn">+ 自定义菜品</button>
+      </div>
+      <div id="manage-form"></div>
+      <div id="manage-dish-list"></div>
+    </div>
+
+    <!-- 家庭列表 -->
+    <div class="page-container" id="page-family"></div>
+
+    <!-- 家庭详情 -->
+    <div class="page-container" id="page-family-detail"></div>
+
+    <!-- Tab Bar -->
+    <div id="tab-bar">
+      <button class="tab-item active" data-tab="0">
+        <span class="tab-icon">🎲</span><span>吃啥呀</span>
+      </button>
+      <button class="tab-item" data-tab="1">
+        <span class="tab-icon">📋</span><span>菜品管理</span>
+      </button>
+      <button class="tab-item" data-tab="2">
+        <span class="tab-icon">👨‍👩‍👧</span><span>家庭共享</span>
+      </button>
+    </div>
+
+    <div id="toast"></div>
+    <div id="modal-overlay">
+      <div id="modal-box">
+        <span id="modal-title"></span>
+        <span id="modal-content"></span>
+        <div id="modal-actions">
+          <button id="modal-cancel">取消</button>
+          <button id="modal-confirm">确认</button>
+        </div>
+      </div>
+    </div>
+    <div id="loading-overlay">
+      <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">加载中...</span>
+      </div>
+    </div>
+  </div>
+  <script>
+
+// --- js/data.js ---
+const DEFAULT_DISHES = [
+  { id: 1,  name: '红烧肉',   emoji: '🍖', desc: '肥而不腻，入口即化',     category: 'meat' },
+  { id: 2,  name: '宫保鸡丁', emoji: '🍗', desc: '香辣可口，花生酥脆',     category: 'meat' },
+  { id: 3,  name: '糖醋里脊', emoji: '🐖', desc: '外酥里嫩，酸甜适中',     category: 'meat' },
+  { id: 4,  name: '鱼香肉丝', emoji: '🐟', desc: '经典川味，下饭神器',     category: 'meat' },
+  { id: 5,  name: '回锅肉',   emoji: '🥩', desc: '蒜香浓郁，肥瘦相间',     category: 'meat' },
+  { id: 6,  name: '水煮鱼',   emoji: '🌶️', desc: '麻辣鲜香，鱼肉嫩滑',   category: 'meat' },
+  { id: 7,  name: '黄焖鸡',   emoji: '🍲', desc: '酱香浓郁，肉质鲜美',     category: 'meat' },
+  { id: 8,  name: '东坡肉',   emoji: '🔥', desc: '色泽红亮，酥烂不碎',     category: 'meat' },
+  { id: 9,  name: '麻婆豆腐', emoji: '🫘', desc: '麻辣烫香，嫩滑爽口',   category: 'veggie' },
+  { id: 10, name: '地三鲜',   emoji: '🍆', desc: '土豆茄子青椒铁三角',     category: 'veggie' },
+  { id: 11, name: '手撕包菜', emoji: '🥬', desc: '酸辣脆爽，开胃解腻',     category: 'veggie' },
+  { id: 12, name: '番茄炒蛋', emoji: '🍅', desc: '国民家常菜，永远的经典', category: 'veggie' },
+  { id: 13, name: '干煸四季豆', emoji: '🌱', desc: '焦香微辣，很有嚼头', category: 'veggie' },
+  { id: 14, name: '蒜蓉西兰花', emoji: '🥦', desc: '清爽健康，蒜香四溢',   category: 'veggie' },
+  { id: 15, name: '酸辣土豆丝', emoji: '🥔', desc: '清脆爽口，开胃必点',   category: 'veggie' },
+  { id: 16, name: '蛋炒饭',   emoji: '🍚', desc: '粒粒分明，朴实美味',     category: 'noodle' },
+  { id: 17, name: '兰州拉面', emoji: '🍜', desc: '一清二白三红四绿',         category: 'noodle' },
+  { id: 18, name: '饺子',     emoji: '🥟', desc: '好吃不过饺子',             category: 'noodle' },
+  { id: 19, name: '麻辣烫',   emoji: '🥘', desc: '万物皆可烫',               category: 'noodle' },
+  { id: 20, name: '炒面',     emoji: '🍝', desc: '镬气十足，鲜香弹牙',     category: 'noodle' },
+  { id: 21, name: '螺蛳粉',   emoji: '🐌', desc: '闻着臭吃着香',           category: 'noodle' },
+  { id: 22, name: '酸辣汤',   emoji: '🥣', desc: '酸辣开胃，暖身首选',     category: 'soup' },
+  { id: 23, name: '紫菜蛋花汤', emoji: '🍳', desc: '清淡鲜美，快速出锅',   category: 'soup' },
+  { id: 24, name: '排骨莲藕汤', emoji: '🦴', desc: '莲藕粉糯，汤浓味鲜',   category: 'soup' },
+  { id: 25, name: '西红柿鸡蛋汤', emoji: '🍲', desc: '酸甜可口，老少皆宜', category: 'soup' },
+];
+
+const HOT_DISHES = [
+  { name: '小炒肉',       emoji: '🌶️', desc: '香辣下饭',             category: 'meat' },
+  { name: '可乐鸡翅',     emoji: '🍗', desc: '甜香入味',             category: 'meat' },
+  { name: '酸菜鱼',       emoji: '🐟', desc: '酸爽鲜嫩',             category: 'meat' },
+  { name: '红烧排骨',     emoji: '🦴', desc: '酱香浓郁',             category: 'meat' },
+  { name: '辣子鸡',       emoji: '🌶️', desc: '麻辣酥香',           category: 'meat' },
+  { name: '啤酒鸭',       emoji: '🦆', desc: '酒香四溢',             category: 'meat' },
+  { name: '孜然牛肉',     emoji: '🥩', desc: '香气扑鼻',             category: 'meat' },
+  { name: '蒜蓉大虾',     emoji: '🦐', desc: '蒜香浓郁',             category: 'meat' },
+  { name: '葱爆羊肉',     emoji: '🐑', desc: '葱香肉嫩',             category: 'meat' },
+  { name: '京酱肉丝',     emoji: '🥢', desc: '酱香浓郁卷饼吃',     category: 'meat' },
+  { name: '粉蒸肉',       emoji: '🍖', desc: '软糯入味',             category: 'meat' },
+  { name: '口水鸡',       emoji: '🍗', desc: '麻辣鲜香',             category: 'meat' },
+  { name: '卤牛肉',       emoji: '🥩', desc: '酱香入味',             category: 'meat' },
+  { name: '脆皮烧肉',     emoji: '🐖', desc: '外脆里嫩',             category: 'meat' },
+  { name: '蚝油生菜',     emoji: '🥬', desc: '简单爽口',             category: 'veggie' },
+  { name: '醋溜白菜',     emoji: '🥬', desc: '酸甜脆嫩',             category: 'veggie' },
+  { name: '凉拌黄瓜',     emoji: '🥒', desc: '清爽解腻',             category: 'veggie' },
+  { name: '清炒时蔬',     emoji: '🥬', desc: '健康解腻',             category: 'veggie' },
+  { name: '虎皮青椒',     emoji: '🌶️', desc: '焦香软嫩',           category: 'veggie' },
+  { name: '荷塘小炒',     emoji: '🌱', desc: '清脆爽口',             category: 'veggie' },
+  { name: '蒜茸空心菜',   emoji: '🥬', desc: '蒜香清爽',             category: 'veggie' },
+  { name: '红烧冬瓜',     emoji: '🍈', desc: '软烂入味',             category: 'veggie' },
+  { name: '香菇青菜',     emoji: '🍄', desc: '鲜美健康',             category: 'veggie' },
+  { name: '菠菜拌粉丝',   emoji: '🥬', desc: '爽口凉菜',             category: 'veggie' },
+  { name: '糖拌番茄',     emoji: '🍅', desc: '酸甜开胃',             category: 'veggie' },
+  { name: '葱油拌面',     emoji: '🍜', desc: '简单快手',             category: 'noodle' },
+  { name: '蛋包饭',       emoji: '🍳', desc: '颜值担当',             category: 'noodle' },
+  { name: '扬州炒饭',     emoji: '🍚', desc: '粒粒分明',             category: 'noodle' },
+  { name: '炸酱面',       emoji: '🍜', desc: '酱香浓郁',             category: 'noodle' },
+  { name: '煲仔饭',       emoji: '🍲', desc: '锅巴焦香',             category: 'noodle' },
+  { name: '手抓饼',       emoji: '🫓', desc: '层层酥脆',             category: 'noodle' },
+  { name: '肉夹馍',       emoji: '🥙', desc: '馍香肉烂',             category: 'noodle' },
+  { name: '煎饼果子',     emoji: '🥞', desc: '薄脆鲜香',             category: 'noodle' },
+  { name: '热干面',       emoji: '🍜', desc: '芝麻酱香',             category: 'noodle' },
+  { name: '担担面',       emoji: '🍜', desc: '麻辣鲜香',             category: 'noodle' },
+  { name: '疙瘩汤',       emoji: '🥣', desc: '暖胃家常',             category: 'soup' },
+  { name: '冬瓜排骨汤',   emoji: '🦴', desc: '清甜滋补',             category: 'soup' },
+  { name: '玉米排骨汤',   emoji: '🌽', desc: '鲜甜可口',             category: 'soup' },
+  { name: '菌菇汤',       emoji: '🍄', desc: '鲜美营养',             category: 'soup' },
+  { name: '豆腐鱼汤',     emoji: '🐟', desc: '奶白鲜美',             category: 'soup' },
+  { name: '绿豆汤',       emoji: '🫘', desc: '清热解暑',             category: 'soup' },
+  { name: '银耳莲子汤',   emoji: '🌰', desc: '润肺养颜',             category: 'soup' },
+  { name: '萝卜牛腩汤',   emoji: '🐂', desc: '清甜浓郁',             category: 'soup' },
+];
+
+
+
+
+// --- js/storage.js ---
+// localStorage wrapper — 模拟微信小程序 storage + 云数据库
+
+const STORAGE_KEY = 'my_dishes';
+const DB_PREFIX = 'rd_db_';
+
+// ---- 个人菜品 ----
+function getMyDishes() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* ignore */ }
+  return [];
+}
+
+function saveMyDishes(dishes) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(dishes));
+}
+
+// ---- 模拟云数据库 ----
+function getCollection(name) {
+  try {
+    const raw = localStorage.getItem(DB_PREFIX + name);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+
+function saveCollection(name, data) {
+  localStorage.setItem(DB_PREFIX + name, JSON.stringify(data));
+}
+
+// ---- 用户身份 ----
+function getUserId() {
+  let uid = localStorage.getItem('rd_user_id');
+  if (!uid) {
+    uid = 'u_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem('rd_user_id', uid);
+  }
+  return uid;
+}
+
+
+
+
+// --- js/utils.js ---
+// Toast / Modal / 工具函数 — 替代微信 wx.showToast / wx.showModal / wx.showLoading
+
+let toastTimer = null;
+let loadingVisible = false;
+
+function showToast(msg, icon = 'success') {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  clearTimeout(toastTimer);
+  el.textContent = (icon === 'none' ? '' : icon === 'success' ? '✅ ' : '') + msg;
+  el.classList.add('show');
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+function showLoading(msg = '加载中...') {
+  const el = document.getElementById('loading-overlay');
+  if (!el) return;
+  el.querySelector('.loading-text').textContent = msg;
+  el.classList.add('show');
+  loadingVisible = true;
+}
+
+function hideLoading() {
+  const el = document.getElementById('loading-overlay');
+  if (!el) return;
+  el.classList.remove('show');
+  loadingVisible = false;
+}
+
+function showModal(title, content) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('modal-overlay');
+    const titleEl = document.getElementById('modal-title');
+    const contentEl = document.getElementById('modal-content');
+    const cancelBtn = document.getElementById('modal-cancel');
+    const confirmBtn = document.getElementById('modal-confirm');
+
+    if (!overlay) { resolve(false); return; }
+
+    titleEl.textContent = title;
+    contentEl.textContent = content;
+
+    overlay.classList.add('show');
+
+    function cleanup(result) {
+      overlay.classList.remove('show');
+      cancelBtn.removeEventListener('click', onCancel);
+      confirmBtn.removeEventListener('click', onConfirm);
+      resolve(result);
+    }
+
+    function onCancel() { cleanup(false); }
+    function onConfirm() { cleanup(true); }
+
+    cancelBtn.addEventListener('click', onCancel);
+    confirmBtn.addEventListener('click', onConfirm);
+  });
+}
+
+function vibrate(pattern = 20) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+function pickRandom(arr, count) {
+  const pool = [...arr];
+  const result = [];
+  for (let i = 0; i < count && pool.length; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    result.push(pool.splice(idx, 1)[0]);
+  }
+  return result;
+}
+
+
+
+
+// --- js/services/family.js ---
+// 家庭服务 — 模拟微信云函数（本地 localStorage 实现）
+// 注意：数据仅保存在当前浏览器中，无法跨设备共享
+
+
+
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+// 创建家庭
+function createFamily(name) {
+  const openId = getUserId();
+  if (!name || !name.trim()) {
+    return { success: false, error: '家庭名称不能为空' };
+  }
+
+  let inviteCode;
+  let families = getCollection('families');
+  do {
+    inviteCode = generateCode();
+  } while (families.some(f => f.inviteCode === inviteCode));
+
+  const now = Date.now();
+  const newFamily = {
+    _id: 'f_' + now.toString(36) + Math.random().toString(36).slice(2, 6),
+    name: name.trim(),
+    creatorId: openId,
+    inviteCode,
+    inviteExpire: now + 7 * 24 * 60 * 60 * 1000,
+    memberCount: 1,
+    createTime: now
+  };
+
+  families.push(newFamily);
+  saveCollection('families', families);
+
+  const members = getCollection('family_members');
+  members.push({
+    _id: 'm_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    familyId: newFamily._id,
+    userId: openId,
+    role: 'owner',
+    nickname: '',
+    joinTime: now
+  });
+  saveCollection('family_members', members);
+
+  return { success: true, familyId: newFamily._id, inviteCode, inviteExpire: newFamily.inviteExpire };
+}
+
+// 加入家庭
+function joinFamily(inviteCode) {
+  const openId = getUserId();
+  if (!inviteCode) return { success: false, error: '邀请码不能为空' };
+
+  const families = getCollection('families');
+  const family = families.find(f => f.inviteCode === inviteCode.toUpperCase());
+  if (!family) return { success: false, error: '邀请码无效' };
+  if (family.inviteExpire && family.inviteExpire < Date.now()) {
+    return { success: false, error: '邀请码已过期' };
+  }
+
+  const members = getCollection('family_members');
+  if (members.some(m => m.familyId === family._id && m.userId === openId)) {
+    return { success: false, error: '你已在该家庭中' };
+  }
+
+  members.push({
+    _id: 'm_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    familyId: family._id,
+    userId: openId,
+    role: 'member',
+    nickname: '',
+    joinTime: Date.now()
+  });
+  saveCollection('family_members', members);
+
+  const famIdx = families.findIndex(f => f._id === family._id);
+  families[famIdx].memberCount = (families[famIdx].memberCount || 1) + 1;
+  saveCollection('families', families);
+
+  return { success: true, familyId: family._id, name: family.name };
+}
+
+// 获取用户的所有家庭
+function getUserFamilies() {
+  const openId = getUserId();
+  const members = getCollection('family_members');
+  const families = getCollection('families');
+  const dishes = getCollection('family_dishes');
+  const roleMap = {};
+
+  const userMembers = members.filter(m => m.userId === openId);
+  userMembers.forEach(m => { roleMap[m.familyId] = m.role; });
+
+  return families
+    .filter(f => roleMap[f._id])
+    .map(f => ({
+      ...f,
+      role: roleMap[f._id],
+      dishCount: dishes.filter(d => d.familyId === f._id).length
+    }));
+}
+
+// 获取家庭详情
+function getFamilyDetail(familyId) {
+  const families = getCollection('families');
+  const members = getCollection('family_members');
+  const dishes = getCollection('family_dishes');
+  const openId = getUserId();
+
+  const family = families.find(f => f._id === familyId);
+  if (!family) return null;
+
+  const familyMembers = members.filter(m => m.familyId === familyId);
+  const myMember = familyMembers.find(m => m.userId === openId);
+  const myRole = myMember ? myMember.role : 'member';
+  const familyDishes = dishes
+    .filter(d => d.familyId === familyId)
+    .sort((a, b) => (b.createTime || 0) - (a.createTime || 0));
+
+  return { family, inviteCode: family.inviteCode, myRole, myOpenId: openId, members: familyMembers, allDishes: familyDishes };
+}
+
+// 添加家庭菜品
+function addFamilyDish(familyId, dish) {
+  const dishes = getCollection('family_dishes');
+  const newDish = {
+    _id: 'd_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    familyId,
+    ...dish,
+    addedBy: getUserId(),
+    createTime: Date.now()
+  };
+  dishes.push(newDish);
+  saveCollection('family_dishes', dishes);
+  return newDish;
+}
+
+// 删除家庭菜品
+function deleteFamilyDish(dishId) {
+  const dishes = getCollection('family_dishes');
+  saveCollection('family_dishes', dishes.filter(d => d._id !== dishId));
+}
+
+// 成员管理
+function manageMember(familyId, targetUserId, action) {
+  const openId = getUserId();
+  const members = getCollection('family_members');
+  const families = getCollection('families');
+
+  const caller = members.find(m => m.familyId === familyId && m.userId === openId);
+  if (!caller) return { success: false, error: '你不是该家庭成员' };
+
+  const target = members.find(m => m.familyId === familyId && m.userId === targetUserId);
+  if (!target) return { success: false, error: '目标用户不在该家庭中' };
+
+  switch (action) {
+    case 'setAdmin':
+      if (caller.role !== 'owner') return { success: false, error: '仅创建者可设置管理员' };
+      if (target.role === 'owner') return { success: false, error: '不能修改创建者角色' };
+      target.role = 'admin';
+      saveCollection('family_members', members);
+      return { success: true };
+
+    case 'revokeAdmin':
+      if (caller.role !== 'owner') return { success: false, error: '仅创建者可取消管理员' };
+      if (target.role !== 'admin') return { success: false, error: '该成员不是管理员' };
+      target.role = 'member';
+      saveCollection('family_members', members);
+      return { success: true };
+
+    case 'remove':
+      if (caller.role !== 'owner') return { success: false, error: '仅创建者可移除成员' };
+      if (target.role === 'owner') return { success: false, error: '不能移除创建者' };
+      saveCollection('family_members', members.filter(m => m._id !== target._id));
+      const fam = families.find(f => f._id === familyId);
+      if (fam) { fam.memberCount = Math.max(0, fam.memberCount - 1); }
+      saveCollection('families', families);
+      return { success: true };
+
+    case 'leave':
+      if (targetUserId !== openId) return { success: false, error: '只能自己退出' };
+      if (target.role === 'owner') return { success: false, error: '创建者不能退出，请先转让或解散家庭' };
+      saveCollection('family_members', members.filter(m => m._id !== target._id));
+      const fam2 = families.find(f => f._id === familyId);
+      if (fam2) { fam2.memberCount = Math.max(0, fam2.memberCount - 1); }
+      saveCollection('families', families);
+      return { success: true };
+
+    default:
+      return { success: false, error: '未知操作' };
+  }
+}
+
+// 生成新邀请码
+function generateInviteCode(familyId) {
+  const openId = getUserId();
+  const members = getCollection('family_members');
+  const families = getCollection('families');
+
+  const caller = members.find(m => m.familyId === familyId && m.userId === openId);
+  if (!caller || (caller.role !== 'owner' && caller.role !== 'admin')) {
+    return { success: false, error: '无权限' };
+  }
+
+  let code;
+  do {
+    code = generateCode();
+  } while (families.some(f => f.inviteCode === code));
+
+  const fam = families.find(f => f._id === familyId);
+  if (fam) {
+    fam.inviteCode = code;
+    fam.inviteExpire = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    saveCollection('families', families);
+  }
+
+  return { success: true, inviteCode: code, inviteExpire: fam ? fam.inviteExpire : 0 };
+}
+
+
+
+
+// --- js/pages/index.js ---
+// 随机开饭页面
+
+var indexState = {
+  currentDishes: [],
+  history: [],
+  combo: '1c1t',
+  spinning: false,
+  source: 'personal',
+  families: [],
+  familyDishes: {},
+  familyLabel: '个人菜单',
+  spinningTimer: null,
+  historyExpanded: false
+};
+
+var INDEX_COMBOS = [
+  { key: '1c',   label: '主食',     dishes: 1, soups: 0 },
+  { key: '2c',   label: '两菜',     dishes: 2, soups: 0 },
+  { key: '1c1t', label: '一菜一汤', dishes: 1, soups: 1 },
+  { key: '2c1t', label: '两菜一汤', dishes: 2, soups: 1 },
+  { key: '3c1t', label: '三菜一汤', dishes: 3, soups: 1 },
+];
+
+function indexGetDishes() {
+  if (indexState.source === 'personal') {
+    var dishes = getMyDishes();
+    if (!dishes || !dishes.length) { dishes = DEFAULT_DISHES; saveMyDishes(dishes); }
+    return dishes;
+  }
+  return indexState.familyDishes[indexState.source] || [];
+}
+
+function indexSwitchSource(source) {
+  if (source === 'personal') { indexState.source = 'personal'; indexState.familyLabel = '个人菜单'; indexRender(); return; }
+  var family = indexState.families.find(function(f) { return f._id === source; });
+  indexState.source = source;
+  indexState.familyLabel = family ? '🏠 ' + family.name : '';
+  if (!indexState.familyDishes[source]) {
+    var allDishes = getCollection('family_dishes');
+    indexState.familyDishes[source] = allDishes.filter(function(d) { return d.familyId === source; });
+  }
+  indexRender();
+}
+
+function indexRandomDish() {
+  var dishes = indexGetDishes();
+  if (!dishes || !dishes.length) { showToast('当前菜单没有菜品', 'none'); return; }
+  if (indexState.spinning) return;
+  indexState.spinning = true;
+  indexRenderSpinningBtn(true);
+
+  var combo = INDEX_COMBOS.find(function(c) { return c.key === indexState.combo; });
+  var dishPool;
+  if (indexState.combo === '1c') {
+    dishPool = dishes.filter(function(d) { return d.category === 'noodle'; });
+  } else {
+    dishPool = dishes.filter(function(d) { return d.category !== 'soup' && d.category !== 'noodle'; });
+  }
+  var soupPool = dishes.filter(function(d) { return d.category === 'soup'; });
+  var availableDishCount = Math.min(combo.dishes, dishPool.length);
+  var availableSoupCount = Math.min(combo.soups, soupPool.length);
+
+  if (availableDishCount === 0 && availableSoupCount === 0) {
+    indexState.spinning = false; indexRenderSpinningBtn(false); showToast('菜品数量不足', 'none'); return;
+  }
+
+  var targetDishes = pickRandom(dishPool, availableDishCount);
+  var targetSoups = availableSoupCount > 0 ? pickRandom(soupPool, availableSoupCount) : [];
+  var target = targetDishes.concat(targetSoups);
+  var count = 0, maxCount = 12;
+
+  function spin() {
+    var animD = pickRandom(dishPool, availableDishCount);
+    var animS = availableSoupCount > 0 ? pickRandom(soupPool, availableSoupCount) : [];
+    indexState.currentDishes = animD.concat(animS);
+    indexRenderResult();
+    count++;
+    if (count >= maxCount) { indexFinalizePick(target, combo); }
+    else { indexState.spinningTimer = setTimeout(spin, 80 + count * 20); }
+  }
+  spin();
+}
+
+function indexFinalizePick(dishes, combo) {
+  indexState.currentDishes = dishes;
+  var record = { comboLabel: combo.label, sourceLabel: indexState.familyLabel, dishes: dishes.map(function(d) { return { name: d.name, emoji: d.emoji }; }), time: Date.now() };
+  indexState.history = [record].concat(indexState.history).slice(0, 20);
+  indexState.spinning = false;
+  indexRender();
+  vibrate(50);
+}
+
+function indexSetCombo(combo) { indexState.combo = combo; indexRenderComboBar(); }
+
+function indexRender() {
+  indexRenderComboBar();
+  indexRenderSourceSelector();
+  indexRenderResult();
+  indexRenderHistory();
+  indexRenderSpinningBtn(indexState.spinning);
+}
+
+function indexRenderComboBar() {
+  var el = document.getElementById('combo-bar');
+  if (!el) return;
+  el.innerHTML = INDEX_COMBOS.map(function(c) { return '<button class="combo-seg ' + (indexState.combo === c.key ? 'active' : '') + '" data-combo="' + c.key + '">' + c.label + '</button>'; }).join('');
+}
+
+function indexRenderSourceSelector() {
+  var el = document.getElementById('source-selector');
+  if (!el) return;
+  var html = '<button class="source-btn ' + (indexState.source === 'personal' ? 'active' : '') + '" data-source="personal">👤 个人菜单</button>';
+  indexState.families.forEach(function(f) { html += '<button class="source-btn ' + (indexState.source === f._id ? 'active' : '') + '" data-source="' + f._id + '">🏠 ' + f.name + '</button>'; });
+  el.innerHTML = html;
+}
+
+function indexRenderResult() {
+  var el = document.getElementById('result-area');
+  if (!el) return;
+  var dishes = indexState.currentDishes;
+  var spinning = indexState.spinning;
+  if (!dishes.length) { el.innerHTML = '<div class="single-area"><div class="single-card placeholder"><span class="single-emoji">🍽️</span><span class="single-name">点击按钮开始</span></div></div>'; return; }
+  if (dishes.length === 1) {
+    var d = dishes[0];
+    el.innerHTML = '<div class="single-area ' + (spinning ? 'spinning' : '') + '"><div class="single-card">' + (d.image ? '<img class="single-img" src="' + d.image + '" />' : '<span class="single-emoji">' + d.emoji + '</span>') + '<span class="single-name">' + d.name + '</span></div></div>';
+  } else {
+    var cards = dishes.map(function(d) { return '<div class="multi-card">' + (d.image ? '<img class="multi-img" src="' + d.image + '" />' : '<span class="multi-emoji">' + d.emoji + '</span>') + '<span class="multi-name">' + d.name + '</span></div>'; }).join('');
+    var gridCls = dishes.length >= 4 ? ' grid-2x2' : '';
+    var spinCls = spinning ? ' spinning' : '';
+    el.innerHTML = '<div class="multi-area' + gridCls + spinCls + '">' + cards + '</div>';
+  }
+}
+
+function indexRenderHistory() {
+  var el = document.getElementById('history-area');
+  if (!el) return;
+  if (!indexState.history.length) { el.innerHTML = ''; return; }
+
+  var showCount = indexState.historyExpanded ? 20 : 5;
+  var visible = indexState.history.slice(0, showCount);
+  var hasMore = indexState.history.length > 5;
+
+  var items = visible.map(function(h) {
+    return '<div class="history-item"><span class="history-combo">' + h.comboLabel + '</span>' +
+      (h.sourceLabel && h.sourceLabel !== '个人菜单' ? '<span class="history-source">' + h.sourceLabel + '</span>' : '') +
+      h.dishes.map(function(d) { return '<span class="history-name">' + d.emoji + d.name + '</span>'; }).join('') +
+      '</div>';
+  }).join('');
+
+  var toggleHtml = '';
+  if (hasMore) {
+    toggleHtml = indexState.historyExpanded
+      ? '<button class="history-toggle" id="history-toggle">收起</button>'
+      : '<button class="history-toggle" id="history-toggle">查看全部 (' + indexState.history.length + ' 条)</button>';
+  }
+
+  el.innerHTML = '<span class="history-title">最近抽取</span><div class="history-list">' + items + '</div>' + toggleHtml;
+}
+
+function indexRenderSpinningBtn(spinning) {
+  var el = document.getElementById('btn-random');
+  if (!el) return;
+  el.disabled = spinning;
+  el.classList.toggle('pressing', spinning);
+  el.innerHTML = spinning ? '挑选中...' : '🎲 吃啥呀';
+}
+
+function indexLoadFamilies() {
+  try { indexState.families = getUserFamilies(); }
+  catch (e) { indexState.families = []; }
+}
+
+function indexSetupEvents() {
+  document.getElementById('combo-bar').addEventListener('click', function(e) {
+    var btn = e.target.closest('.combo-seg');
+    if (btn) indexSetCombo(btn.dataset.combo);
+  });
+  document.getElementById('btn-random').addEventListener('click', indexRandomDish);
+  document.getElementById('source-selector').addEventListener('click', function(e) {
+    var btn = e.target.closest('.source-btn');
+    if (btn) indexSwitchSource(btn.dataset.source);
+  });
+  document.getElementById('history-area').addEventListener('click', function(e) {
+    if (e.target.closest('#history-toggle')) {
+      indexState.historyExpanded = !indexState.historyExpanded;
+      indexRenderHistory();
+    }
+  });
+}
+
+function initIndexPage() {
+  indexLoadFamilies();
+  indexRender();
+  indexSetupEvents();
+}
+
+function refreshIndexFamilies() { indexLoadFamilies(); }
+
+
+// --- js/pages/manage.js ---
+// 菜品管理页面
+
+var MGR_CATEGORY_LABELS = { meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
+var MGR_CATEGORY_ORDER = ['meat', 'veggie', 'noodle', 'soup'];
+
+var mgrState = {
+  dishes: [],
+  grouped: [],
+  hotDishes: HOT_DISHES,
+  hotFilter: 'all',
+  adding: false,
+  form: { name: '', emoji: '', category: 'meat', desc: '', image: '' },
+  _idCounter: 0
+};
+
+function mgrLoadDishes() {
+  mgrState.dishes = getMyDishes();
+  mgrState._idCounter = mgrState.dishes.reduce(function(max, d) { return Math.max(max, d.id || 0); }, 0);
+  mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
+}
+
+function mgrGroupByCategory(dishes) {
+  return MGR_CATEGORY_ORDER.map(function(cat) {
+    return {
+      label: MGR_CATEGORY_LABELS[cat],
+      key: cat,
+      items: dishes.filter(function(d) { return d.category === cat; })
+    };
+  }).filter(function(g) { return g.items.length; });
+}
+
+function mgrFilterHotDishes() {
+  mgrState.hotDishes = mgrState.hotFilter === 'all'
+    ? HOT_DISHES
+    : HOT_DISHES.filter(function(d) { return d.category === mgrState.hotFilter; });
+}
+
+function mgrAddDish() {
+  if (!mgrState.form.name.trim()) { showToast('请输入菜名', 'none'); return; }
+  var newDish = {
+    id: mgrState._idCounter + 1,
+    name: mgrState.form.name.trim(),
+    emoji: mgrState.form.emoji || '🍽️',
+    desc: mgrState.form.desc || '暂无描述',
+    category: mgrState.form.category,
+    image: mgrState.form.image || ''
+  };
+  mgrState.dishes = mgrState.dishes.concat([newDish]);
+  saveMyDishes(mgrState.dishes);
+  mgrState._idCounter++;
+  mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
+  mgrState.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
+  mgrState.adding = false;
+  showToast('添加成功', 'success');
+  mgrRender();
+}
+
+function mgrAddPopular(index) {
+  var dish = mgrState.hotDishes[index];
+  if (mgrState.dishes.some(function(d) { return d.name === dish.name; })) {
+    showToast(dish.name + ' 已存在', 'none'); return;
+  }
+  var newDish = { id: mgrState._idCounter + 1, name: dish.name, emoji: dish.emoji, desc: dish.desc, category: dish.category, image: '' };
+  mgrState.dishes = mgrState.dishes.concat([newDish]);
+  saveMyDishes(mgrState.dishes);
+  mgrState._idCounter++;
+  mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
+  showToast('已添加 ' + dish.name, 'success');
+  vibrate(20);
+  mgrRender();
+}
+
+function mgrDeleteDish(id) {
+  showModal('确认删除', '确定要删除这道菜吗？').then(function(confirmed) {
+    if (!confirmed) return;
+    mgrState.dishes = mgrState.dishes.filter(function(d) { return d.id !== id; });
+    saveMyDishes(mgrState.dishes);
+    mgrState.grouped = mgrGroupByCategory(mgrState.dishes);
+    mgrRender();
+  });
+}
+
+function mgrProcessImage(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var maxW = 200;
+      var scale = maxW / img.width;
+      canvas.width = maxW;
+      canvas.height = img.height * scale;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      mgrState.form.image = canvas.toDataURL('image/jpeg', 0.6);
+      mgrRenderForm();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function mgrRender() {
+  mgrRenderHotFilter();
+  mgrRenderHotList();
+  mgrRenderForm();
+  mgrRenderDishList();
+  mgrRenderAddBtn();
+}
+
+function mgrRenderHotFilter() {
+  var el = document.getElementById('manage-hot-filter');
+  if (!el) return;
+  var cats = ['all', 'meat', 'veggie', 'noodle', 'soup'];
+  var labels = { all: '全部', meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
+  el.innerHTML = cats.map(function(c) {
+    return '<button class="hot-filter-btn ' + (mgrState.hotFilter === c ? 'active' : '') + '" data-filter="' + c + '">' + labels[c] + '</button>';
+  }).join('');
+}
+
+function mgrRenderHotList() {
+  var el = document.getElementById('manage-hot-list');
+  if (!el) return;
+  el.innerHTML = mgrState.hotDishes.map(function(d, i) {
+    return '<div class="popular-item" data-index="' + i + '"><span class="pop-emoji">' + d.emoji + '</span><span class="pop-name">' + d.name + '</span><span class="pop-add">+</span></div>';
+  }).join('');
+}
+
+function mgrRenderAddBtn() {
+  var el = document.getElementById('manage-add-btn');
+  if (!el) return;
+  el.innerHTML = mgrState.adding ? '收起' : '+ 自定义菜品';
+}
+
+function mgrEscapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function mgrRenderForm() {
+  var el = document.getElementById('manage-form');
+  if (!el) return;
+  if (!mgrState.adding) { el.innerHTML = ''; return; }
+  var f = mgrState.form;
+  el.innerHTML = '<div class="img-section"><div class="img-picker">' +
+    (f.image ? '<img class="preview-img" src="' + f.image + '" />' : '<div class="img-placeholder"><span class="img-icon">📷</span><span class="img-hint">上传菜品图片</span></div>') +
+    '</div><div class="img-actions">' +
+    '<label class="img-btn"><span class="img-btn-icon">📸</span><span class="img-btn-text">拍照</span><input type="file" accept="image/*" capture="camera" class="file-input" /></label>' +
+    '<label class="img-btn"><span class="img-btn-icon">🖼️</span><span class="img-btn-text">相册</span><input type="file" accept="image/*" class="file-input" /></label>' +
+    '</div></div>' +
+    '<input class="input" placeholder="菜名（必填）" value="' + mgrEscapeHtml(f.name) + '" data-field="name" />' +
+    '<input class="input" placeholder="Emoji（如 🍗，可选）" value="' + mgrEscapeHtml(f.emoji) + '" data-field="emoji" maxlength="2" />' +
+    '<input class="input" placeholder="一句话描述（可选）" value="' + mgrEscapeHtml(f.desc) + '" data-field="desc" />' +
+    '<div class="cat-row"><span class="cat-label">分类</span>' +
+    ['meat','veggie','noodle','soup'].map(function(c) {
+      return '<button class="cat-btn ' + (f.category === c ? 'active' : '') + '" data-cat="' + c + '">' + MGR_CATEGORY_LABELS[c] + '</button>';
+    }).join('') + '</div>' +
+    '<button class="btn-confirm" id="manage-form-confirm">确认添加</button>';
+}
+
+function mgrRenderDishList() {
+  var el = document.getElementById('manage-dish-list');
+  if (!el) return;
+  if (!mgrState.grouped.length) {
+    el.innerHTML = '<div class="empty"><span class="empty-icon">🍽️</span><span class="empty-text">还没有菜品</span><span class="empty-hint">从热门菜品快速添加，或自定义创建</span></div>';
+    return;
+  }
+  el.innerHTML = mgrState.grouped.map(function(g) {
+    return '<div class="section"><div class="section-header"><span class="section-title">' + g.label + '</span><span class="section-count">' + g.items.length + '道</span></div><div class="dish-list">' +
+      g.items.map(function(d) {
+        return '<div class="dish-item">' +
+          (d.image ? '<img class="item-img" src="' + d.image + '" />' : '<span class="item-emoji">' + d.emoji + '</span>') +
+          '<div class="item-body"><span class="item-name">' + d.name + '</span><span class="item-desc">' + d.desc + '</span></div>' +
+          '<button class="btn-del" data-del-id="' + d.id + '"><span class="del-icon">✕</span></button></div>';
+      }).join('') + '</div></div>';
+  }).join('');
+}
+
+function mgrSetupEvents() {
+  document.getElementById('manage-hot-filter').addEventListener('click', function(e) {
+    var btn = e.target.closest('.hot-filter-btn');
+    if (btn) { mgrState.hotFilter = btn.dataset.filter; mgrFilterHotDishes(); mgrRender(); }
+  });
+  document.getElementById('manage-hot-list').addEventListener('click', function(e) {
+    var item = e.target.closest('.popular-item');
+    if (item) mgrAddPopular(parseInt(item.dataset.index));
+  });
+  document.getElementById('manage-add-btn').addEventListener('click', function() {
+    mgrState.adding = !mgrState.adding;
+    if (!mgrState.adding) mgrState.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
+    mgrRender();
+  });
+  document.getElementById('manage-form').addEventListener('click', function(e) {
+    if (e.target.matches('#manage-form-confirm')) { mgrAddDish(); return; }
+    var catBtn = e.target.closest('.cat-btn');
+    if (catBtn) { mgrState.form.category = catBtn.dataset.cat; mgrRenderForm(); }
+  });
+  document.getElementById('manage-form').addEventListener('input', function(e) {
+    if (e.target.classList.contains('input') && e.target.dataset.field) {
+      mgrState.form[e.target.dataset.field] = e.target.value;
+    }
+  });
+  document.getElementById('manage-form').addEventListener('change', function(e) {
+    if (e.target.type === 'file' && e.target.files[0]) {
+      mgrProcessImage(e.target.files[0]);
+    }
+  });
+  document.getElementById('manage-dish-list').addEventListener('click', function(e) {
+    var delBtn = e.target.closest('.btn-del');
+    if (delBtn) mgrDeleteDish(parseInt(delBtn.dataset.delId));
+  });
+}
+
+function initManagePage() {
+  mgrLoadDishes();
+  mgrFilterHotDishes();
+  mgrRender();
+  mgrSetupEvents();
+}
+
+
+// --- js/pages/family.js ---
+// 家庭列表页面
+
+var famState = {
+  families: [],
+  showCreate: false,
+  showJoin: false,
+  createName: '',
+  joinCode: ''
+};
+
+function famLoadFamilies() {
+  try { famState.families = getUserFamilies(); }
+  catch (e) { famState.families = []; }
+}
+
+function famRender() {
+  var el = document.getElementById('page-family');
+  if (!el) return;
+
+  if (famState.families.length === 0 && !famState.showJoin) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-badge">👨‍👩‍👧</div><span class="empty-title">还没有家庭</span><span class="empty-desc">创建一个家庭，和家人共享菜单</span><div class="empty-actions"><button class="btn btn-primary" id="family-create-btn">🏠 创建家庭</button><button class="btn btn-outline" id="family-join-btn">🔑 输入邀请码</button><button class="scan-btn" id="family-scan-btn">📷 扫码加入</button></div></div><div id="family-create-form"></div>';
+    if (famState.showCreate) famRenderCreateForm();
+    return;
+  }
+
+  var html = '<div class="family-list"><div class="list-header"><span class="list-title">我的家庭</span><span class="list-count">' + famState.families.length + ' 个</span></div>';
+  famState.families.forEach(function(f) {
+    var roleLabel = f.role === 'owner' ? '创建者' : f.role === 'admin' ? '管理员' : '成员';
+    html += '<div class="family-card" data-family-id="' + f._id + '" data-family-name="' + f.name + '"><div class="card-left"><span class="card-icon">🏠</span><div class="card-info"><span class="card-name">' + f.name + '</span><span class="card-meta">' + (f.memberCount || 0) + ' 位成员 · ' + roleLabel + '</span></div></div><div class="card-right"><div class="card-tags"><span class="tag tag-dish">' + (f.dishCount || 0) + ' 道菜</span>' + (f.role === 'owner' || f.role === 'admin' ? '<span class="tag tag-code">邀请码 ' + f.inviteCode + '</span>' : '') + '</div><div class="card-actions">' + (f.role === 'owner' || f.role === 'admin' ? '<button class="card-qr-btn" data-qr-code="' + f.inviteCode + '" title="扫码分享">📱</button>' : '') + '<span class="card-arrow">›</span></div></div></div>';
+  });
+  html += '<div class="bottom-actions"><button class="btn btn-outline-sm" id="family-create-btn2">+ 创建家庭</button><button class="btn btn-outline-sm" id="family-join-btn2">🔑 加入家庭</button><button class="scan-btn" id="family-scan-btn2">📷 扫码加入</button></div></div><div id="family-join-form"></div>';
+  el.innerHTML = html;
+  if (famState.showJoin) famRenderJoinForm();
+  if (famState.showCreate) famRenderCreateForm();
+}
+
+function famRenderCreateForm() {
+  var targetEl = document.getElementById('family-create-form') || document.getElementById('page-family');
+  if (!targetEl) return;
+  var formHtml = '<div class="form-card" id="create-form-card"><div class="form-header"><span class="form-title">创建家庭</span><span class="form-close" id="create-close">✕</span></div><input class="input" placeholder="家庭名称（如我们家）" value="' + famState.createName + '" id="create-name-input" maxlength="20" /><button class="btn btn-primary" id="create-confirm" style="margin-top:16px;">确认创建</button></div>';
+  if (targetEl.id === 'page-family') { targetEl.insertAdjacentHTML('beforeend', formHtml); }
+  else { targetEl.innerHTML = formHtml; }
+  famState.showCreate = true;
+}
+
+function famRenderJoinForm() {
+  var targetEl = document.getElementById('family-join-form') || document.getElementById('page-family');
+  if (!targetEl) return;
+  var formHtml = '<div class="form-card" id="join-form-card"><div class="form-header"><span class="form-title">加入家庭</span><span class="form-close" id="join-close">✕</span></div><input class="input" placeholder="输入 6 位邀请码" value="' + famState.joinCode + '" id="join-code-input" maxlength="6" style="text-transform:uppercase;" />' + (famState.joinCode.length === 6 ? '<button class="btn btn-primary" id="join-confirm" style="margin-top:16px;">确认加入</button>' : '<button class="btn btn-disabled" style="margin-top:16px;" disabled>请输入 6 位邀请码</button>') + '</div>';
+  if (targetEl.id === 'page-family') { targetEl.insertAdjacentHTML('beforeend', formHtml); }
+  else { targetEl.innerHTML = formHtml; }
+  famState.showJoin = true;
+}
+
+function famSetupEvents() {
+  var page = document.getElementById('page-family');
+  if (!page) return;
+
+  page.addEventListener('click', function(e) {
+    var card = e.target.closest('.family-card');
+    if (card) { navigateTo('family-detail', { familyId: card.dataset.familyId, familyName: card.dataset.familyName }); return; }
+    if (e.target.matches('#family-create-btn, #family-create-btn2')) { famState.showCreate = true; famState.showJoin = false; famState.createName = ''; famRender(); return; }
+    if (e.target.matches('#family-join-btn, #family-join-btn2')) { famState.showJoin = true; famState.showCreate = false; famState.joinCode = ''; famRender(); return; }
+    if (e.target.closest('.card-qr-btn')) {
+    var qrBtn = e.target.closest('.card-qr-btn');
+    showQrModal(qrBtn.dataset.qrCode);
+    e.stopPropagation();
+    return;
+  }
+  if (e.target.matches('#family-scan-btn, #family-scan-btn2')) { openScanner(); return; }
+    if (e.target.matches('#create-close')) { famState.showCreate = false; famRender(); return; }
+    if (e.target.matches('#join-close')) { famState.showJoin = false; famRender(); return; }
+    if (e.target.matches('#create-confirm')) {
+      var name = famState.createName.trim();
+      if (!name) { showToast('请输入家庭名称', 'none'); return; }
+      var res = createFamily(name);
+      if (res.success) { showToast('创建成功', 'success'); famState.showCreate = false; famState.createName = ''; famLoadFamilies(); famRender(); }
+      else { showToast(res.error, 'none'); }
+      return;
+    }
+    if (e.target.matches('#join-confirm')) {
+      var code = famState.joinCode.trim();
+      if (code.length !== 6) return;
+      var res = joinFamily(code);
+      if (res.success) { showToast('加入成功', 'success'); famState.showJoin = false; famState.joinCode = ''; famLoadFamilies(); famRender(); }
+      else { showToast(res.error, 'none'); }
+      return;
+    }
+  });
+
+  page.addEventListener('input', function(e) {
+    if (e.target.id === 'create-name-input') famState.createName = e.target.value;
+    if (e.target.id === 'join-code-input') { famState.joinCode = e.target.value.toUpperCase(); if (famState.joinCode.length === 6) famRenderJoinForm(); }
+  });
+}
+
+function initFamilyPage() {
+  famLoadFamilies();
+  famRender();
+  famSetupEvents();
+}
+
+
+// --- js/pages/family-detail.js ---
+// 家庭详情页面
+
+var FD_CATEGORY_LABELS = { meat: '荤菜', veggie: '素菜', noodle: '主食', soup: '汤品' };
+var FD_CATEGORY_ORDER = ['meat', 'veggie', 'noodle', 'soup'];
+
+var fdState = {
+  familyId: '',
+  familyName: '',
+  inviteCode: '',
+  myRole: '',
+  myOpenId: '',
+  currentTab: 'dishes',
+  allDishes: [],
+  groupedDishes: [],
+  hotDishes: HOT_DISHES,
+  hotFilter: 'all',
+  adding: false,
+  form: { name: '', emoji: '', category: 'meat', desc: '', image: '' },
+  members: []
+};
+
+function fdLoadAll() {
+  var detail = getFamilyDetail(fdState.familyId);
+  if (!detail) { showToast('家庭不存在', 'none'); navigateBack(); return; }
+  fdState.inviteCode = detail.inviteCode;
+  fdState.myRole = detail.myRole;
+  fdState.myOpenId = detail.myOpenId;
+  fdState.allDishes = detail.allDishes;
+  fdState.groupedDishes = fdGroupByCategory(fdState.allDishes);
+  fdState.members = detail.members;
+  fdState.familyName = detail.family.name;
+}
+
+function fdGroupByCategory(dishes) {
+  return FD_CATEGORY_ORDER.map(function(cat) {
+    return { label: FD_CATEGORY_LABELS[cat], key: cat, items: dishes.filter(function(d) { return d.category === cat; }) };
+  }).filter(function(g) { return g.items.length; });
+}
+
+function fdFilterHotDishes() {
+  fdState.hotDishes = fdState.hotFilter === 'all' ? HOT_DISHES : HOT_DISHES.filter(function(d) { return d.category === fdState.hotFilter; });
+}
+
+function fdAddDish() {
+  if (!fdState.form.name.trim()) { showToast('请输入菜名', 'none'); return; }
+  addFamilyDish(fdState.familyId, {
+    name: fdState.form.name.trim(), emoji: fdState.form.emoji || '🍽️',
+    desc: fdState.form.desc || '暂无描述', category: fdState.form.category, image: fdState.form.image || ''
+  });
+  fdState.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
+  fdState.adding = false;
+  fdLoadAll();
+  fdRender();
+  showToast('添加成功', 'success');
+}
+
+function fdAddPopular(index) {
+  var dish = fdState.hotDishes[index];
+  if (fdState.allDishes.some(function(d) { return d.name === dish.name; })) {
+    showToast(dish.name + ' 已存在', 'none'); return;
+  }
+  addFamilyDish(fdState.familyId, { name: dish.name, emoji: dish.emoji, desc: dish.desc, category: dish.category, image: '' });
+  fdLoadAll();
+  fdRender();
+  showToast('已添加 ' + dish.name, 'success');
+  vibrate(20);
+}
+
+function fdDeleteDish(id) {
+  showModal('确认删除', '确定要删除这道菜吗？').then(function(confirmed) {
+    if (!confirmed) return;
+    deleteFamilyDish(id);
+    fdLoadAll();
+    fdRender();
+  });
+}
+
+function fdHandleManageMember(userId, action) {
+  var res = manageMember(fdState.familyId, userId, action);
+  if (res.success) { showToast('操作成功', 'success'); fdLoadAll(); fdRender(); }
+  else { showToast(res.error, 'none'); }
+}
+
+function fdLeaveFamily() {
+  showModal('退出家庭', '确定要退出这个家庭吗？').then(function(confirmed) {
+    if (!confirmed) return;
+    var res = manageMember(fdState.familyId, fdState.myOpenId, 'leave');
+    if (res.success) { showToast('已退出', 'success'); setTimeout(function() { navigateBack(); }, 1500); }
+    else { showToast(res.error, 'none'); }
+  });
+}
+
+function fdCopyInviteCode() {
+  navigator.clipboard.writeText(fdState.inviteCode).then(
+    function() { showToast('已复制', 'success'); },
+    function() { showToast('复制失败', 'none'); }
+  );
+}
+
+function fdProcessImage(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var maxW = 200, scale = maxW / img.width;
+      canvas.width = maxW; canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      fdState.form.image = canvas.toDataURL('image/jpeg', 0.6);
+      fdRenderForm();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function fdRender() {
+  var el = document.getElementById('page-family-detail');
+  if (!el) return;
+  var isAdmin = fdState.myRole === 'owner' || fdState.myRole === 'admin';
+
+  el.innerHTML = (isAdmin ? '<div class="invite-bar"><div class="invite-code"><span class="invite-label">邀请码</span><span class="invite-value">' + fdState.inviteCode + '</span></div><div class="invite-actions"><button class="invite-btn" id="fd-copy-invite">📋 复制</button><button class="invite-btn invite-share" id="fd-share">📱 扫码分享</button></div></div>' : '') +
+    '<div class="tab-bar"><button class="tab ' + (fdState.currentTab === 'dishes' ? 'active' : '') + '" data-tab="dishes">🍽️ 家庭菜单</button><button class="tab ' + (fdState.currentTab === 'members' ? 'active' : '') + '" data-tab="members">👥 成员 (' + fdState.members.length + ')</button></div>' +
+    '<div id="fd-form-area"></div><div id="fd-tab-content"></div><button class="btn-leave" id="fd-leave">退出家庭</button>';
+
+  if (fdState.currentTab === 'dishes') fdRenderDishesTab();
+  else fdRenderMembersTab();
+}
+
+function fdRenderDishesTab() {
+  var el = document.getElementById('fd-tab-content');
+  if (!el) return;
+  var isAdmin = fdState.myRole === 'owner' || fdState.myRole === 'admin';
+
+  el.innerHTML = '<div class="popular-section"><span class="section-label">🔥 热门菜品 · 一键添加</span><div class="hot-filter-row" id="fd-hot-filter">' +
+    ['all','meat','veggie','noodle','soup'].map(function(c) {
+      var labels = {all:'全部',meat:'荤菜',veggie:'素菜',noodle:'主食',soup:'汤品'};
+      return '<button class="hot-filter-btn ' + (fdState.hotFilter === c ? 'active' : '') + '" data-filter="' + c + '">' + labels[c] + '</button>';
+    }).join('') + '</div><div class="popular-scroll-row" id="fd-hot-list">' +
+    fdState.hotDishes.map(function(d, i) {
+      return '<div class="popular-item" data-hot-idx="' + i + '"><span class="pop-emoji">' + d.emoji + '</span><span class="pop-name">' + d.name + '</span><span class="pop-add">+</span></div>';
+    }).join('') + '</div></div>' +
+    (isAdmin ? '<div class="add-bar"><button class="btn-add" id="fd-toggle-add">' + (fdState.adding ? '收起' : '+ 自定义菜品') + '</button></div>' : '') +
+    '<div id="fd-dish-list">' + fdState.groupedDishes.map(function(g) {
+      return '<div class="section"><div class="section-header"><span class="section-title">' + g.label + '</span><span class="section-count">' + g.items.length + '道</span></div><div class="dish-list">' +
+        g.items.map(function(d) {
+          return '<div class="dish-item">' + (d.image ? '<img class="item-img" src="' + d.image + '" />' : '<span class="item-emoji">' + d.emoji + '</span>') +
+            '<div class="item-body"><span class="item-name">' + d.name + '</span><span class="item-desc">' + d.desc + '</span></div>' +
+            (isAdmin ? '<button class="btn-del" data-del-id="' + d._id + '"><span class="del-icon">✕</span></button>' : '') + '</div>';
+        }).join('') + '</div></div>';
+    }).join('') + '</div>';
+
+  if (fdState.adding) fdRenderForm();
+}
+
+function fdRenderMembersTab() {
+  var el = document.getElementById('fd-tab-content');
+  if (!el) return;
+  var isOwner = fdState.myRole === 'owner';
+  el.innerHTML = '<div class="member-list">' + fdState.members.map(function(m) {
+    return '<div class="member-item"><span class="member-avatar">👤</span><div class="member-info"><span class="member-name">' + (m.nickname || '匿名用户') + '</span><span class="member-role role-' + m.role + '">' + (m.role === 'owner' ? '创建者' : m.role === 'admin' ? '管理员' : '成员') + '</span></div>' +
+      (isOwner && m.role !== 'owner' ? '<div class="member-actions">' + (m.role === 'admin' ? '<button class="member-act-btn" data-action="revokeAdmin" data-uid="' + m.userId + '">取消管理</button>' : '<button class="member-act-btn" data-action="setAdmin" data-uid="' + m.userId + '">设为管理</button>') + '<button class="member-act-btn danger" data-action="remove" data-uid="' + m.userId + '">移除</button></div>' : '') +
+      '</div>';
+  }).join('') + '</div>';
+}
+
+function fdRenderForm() {
+  var el = document.getElementById('fd-form-area');
+  if (!el) return;
+  var f = fdState.form;
+  el.innerHTML = '<div class="add-form"><div class="img-section"><div class="img-picker">' +
+    (f.image ? '<img class="preview-img" src="' + f.image + '" />' : '<div class="img-placeholder"><span class="img-icon">📷</span><span class="img-hint">上传菜品图片</span></div>') +
+    '</div><div class="img-actions"><label class="img-btn"><span class="img-btn-icon">📸</span><span class="img-btn-text">拍照</span><input type="file" accept="image/*" capture="camera" class="file-input" /></label><label class="img-btn"><span class="img-btn-icon">🖼️</span><span class="img-btn-text">相册</span><input type="file" accept="image/*" class="file-input" /></label></div></div>' +
+    '<input class="input" placeholder="菜名（必填）" value="' + (f.name||'') + '" data-field="name" />' +
+    '<input class="input" placeholder="Emoji（如 🍗，可选）" value="' + (f.emoji||'') + '" data-field="emoji" maxlength="2" />' +
+    '<input class="input" placeholder="一句话描述（可选）" value="' + (f.desc||'') + '" data-field="desc" />' +
+    '<div class="cat-row"><span class="cat-label">分类</span>' +
+    ['meat','veggie','noodle','soup'].map(function(c) {
+      return '<button class="cat-btn ' + (f.category === c ? 'active' : '') + '" data-cat="' + c + '">' + FD_CATEGORY_LABELS[c] + '</button>';
+    }).join('') + '</div>' +
+    '<button class="btn-confirm" id="fd-form-confirm">确认添加</button></div>';
+}
+
+function fdSetupEvents() {
+  var page = document.getElementById('page-family-detail');
+  if (!page) return;
+  page.addEventListener('click', function(e) {
+    var tab = e.target.closest('.tab');
+    if (tab) { fdState.currentTab = tab.dataset.tab; fdRender(); return; }
+    var filterBtn = e.target.closest('#fd-hot-filter .hot-filter-btn');
+    if (filterBtn) { fdState.hotFilter = filterBtn.dataset.filter; fdFilterHotDishes(); fdRenderDishesTab(); return; }
+    var hotItem = e.target.closest('#fd-hot-list .popular-item');
+    if (hotItem) { fdAddPopular(parseInt(hotItem.dataset.hotIdx)); return; }
+    if (e.target.matches('#fd-toggle-add')) { fdState.adding = !fdState.adding; fdRender(); return; }
+    if (e.target.matches('#fd-form-confirm')) { fdAddDish(); return; }
+    var catBtn = e.target.closest('.cat-btn');
+    if (catBtn) { fdState.form.category = catBtn.dataset.cat; fdRenderForm(); return; }
+    var delBtn = e.target.closest('.btn-del');
+    if (delBtn) { fdDeleteDish(delBtn.dataset.delId); return; }
+    if (e.target.matches('#fd-copy-invite')) { fdCopyInviteCode(); return; }
+    if (e.target.matches('#fd-share')) { showQrModal(fdState.inviteCode); return; }
+    var actBtn = e.target.closest('.member-act-btn');
+    if (actBtn) { fdHandleManageMember(actBtn.dataset.uid, actBtn.dataset.action); return; }
+    if (e.target.matches('#fd-leave')) { fdLeaveFamily(); return; }
+  });
+  page.addEventListener('input', function(e) {
+    if (e.target.classList.contains('input') && e.target.dataset.field) {
+      fdState.form[e.target.dataset.field] = e.target.value;
+    }
+  });
+  page.addEventListener('change', function(e) {
+    if (e.target.type === 'file' && e.target.files[0]) fdProcessImage(e.target.files[0]);
+  });
+}
+
+function initFamilyDetailPage(params) {
+  fdState.familyId = params.familyId || '';
+  fdState.familyName = params.familyName || '';
+  fdState.adding = false;
+  fdState.form = { name: '', emoji: '', category: 'meat', desc: '', image: '' };
+  fdState.currentTab = 'dishes';
+  document.title = params.familyName || '家庭详情';
+  fdLoadAll();
+  fdFilterHotDishes();
+  fdRender();
+  fdSetupEvents();
+}
+
+
+// --- js/app.js ---
+// 主应用 — 路由、页面切换
+
+var currentPage = '';
+var currentParams = {};
+
+var PAGES = {
+  index:    { init: initIndexPage,    tab: 0 },
+  manage:   { init: initManagePage,   tab: 1 },
+  family:   { init: initFamilyPage,   tab: 2 },
+  'family-detail': { init: initFamilyDetailPage, tab: -1 },
+};
+
+function initDefaultDishes() {
+  var stored = getMyDishes();
+  if (!stored || stored.length === 0) {
+    var dishes = DEFAULT_DISHES.map(function(d, i) { return Object.assign({}, d, { id: i + 1 }); });
+    saveMyDishes(dishes);
+  }
+}
+
+function navigateTo(page, params) {
+  params = params || {};
+  var route = PAGES[page];
+  if (!route) { navigateTo('index'); return; }
+
+  currentPage = page;
+  currentParams = params;
+
+  var tabItems = document.querySelectorAll('.tab-item');
+  tabItems.forEach(function(el, i) {
+    el.classList.toggle('active', i === route.tab);
+  });
+
+  var idx = document.getElementById('page-index');
+  var mgr = document.getElementById('page-manage');
+  var fam = document.getElementById('page-family');
+  var famd = document.getElementById('page-family-detail');
+
+  if (idx) idx.style.display = page === 'index' ? 'flex' : 'none';
+  if (mgr) mgr.style.display = page === 'manage' ? 'flex' : 'none';
+  if (fam) fam.style.display = page === 'family' ? 'flex' : 'none';
+  if (famd) famd.style.display = page === 'family-detail' ? 'flex' : 'none';
+
+  var tabBar = document.getElementById('tab-bar');
+  if (tabBar) tabBar.style.display = (page === 'family-detail') ? 'none' : '';
+
+  var backBtn = document.getElementById('back-btn');
+  if (backBtn) backBtn.style.display = (page === 'family-detail') ? 'block' : 'none';
+
+  document.title = page === 'family-detail' ? (params.familyName || '家庭详情') : '今天吃啥呀？';
+
+  route.init(params);
+}
+
+function navigateBack() {
+  if (currentPage === 'family-detail') { navigateTo('family'); }
+  else { navigateTo('index'); }
+}
+
+function handleHashChange() {
+  var hash = location.hash.replace('#', '') || 'index';
+  var parts = hash.split('?');
+  var page = parts[0];
+  var params = {};
+  if (parts[1]) {
+    parts[1].split('&').forEach(function(pair) {
+      var kv = pair.split('=');
+      params[kv[0]] = decodeURIComponent(kv[1] || '');
+    });
+  }
+  navigateTo(page, params);
+}
+
+function setupGlobalEvents() {
+  var tabBar = document.getElementById('tab-bar');
+  if (tabBar) {
+    tabBar.addEventListener('click', function(e) {
+      var tab = e.target.closest('.tab-item');
+      if (!tab) return;
+      var pages = ['index', 'manage', 'family'];
+      navigateTo(pages[parseInt(tab.dataset.tab)]);
+    });
+  }
+
+  var backBtn = document.getElementById('back-btn');
+  if (backBtn) backBtn.addEventListener('click', navigateBack);
+
+  var toast = document.getElementById('toast');
+  if (toast) {
+    toast.addEventListener('transitionend', function() {
+      if (!this.classList.contains('show')) this.textContent = '';
+    });
+  }
+}
+
+// 启动
+initDefaultDishes();
+window.addEventListener('hashchange', handleHashChange);
+
+function boot() {
+  setupGlobalEvents();
+  handleHashChange();
+  checkJoinParam();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+
+
+
+// PWA: 注册 service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').then(function() {
+    console.log('SW registered');
+  }).catch(function() {
+    console.log('SW registration failed');
+  });
+}
+
+
+
+// ============ QR Code Generator (pure JS, SVG output) ============
+// Based on Project Nayuki's QR Code generator (MIT)
+var qrcodegen = (function() {
+  'use strict';
+  function QrCode(version, errorCorrectionLevel, dataCodewords, msk) {
+    this.version = version; this.errorCorrectionLevel = errorCorrectionLevel;
+    this.modules = []; this.isFunction = [];
+    var size = version * 4 + 17;
+    for (var y = 0; y < size; y++) {
+      this.modules.push([]); this.isFunction.push([]);
+      for (var x = 0; x < size; x++) {
+        this.modules[y].push(false); this.isFunction[y].push(false);
+      }
+    }
+    this.drawFunctionPatterns();
+    var allCodewords = this.addEccAndInterleave(dataCodewords);
+    this.drawCodewords(allCodewords);
+    if (msk === undefined) {
+      var minPenalty = Infinity;
+      for (var i = 0; i < 8; i++) {
+        this.applyMask(i);
+        this.drawFormatBits(i);
+        var penalty = this.getPenaltyScore();
+        if (penalty < minPenalty) { minPenalty = penalty; msk = i; }
+        this.applyMask(i);
+      }
+    }
+    this.applyMask(msk);
+    this.drawFormatBits(msk);
+    this.isFunction = [];
+  }
+  QrCode.prototype.drawFunctionPatterns = function() {
+    var size = this.modules.length;
+    for (var i = 0; i < size; i++) {
+      this.setModule(6, i, i % 2 === 0, true);
+      this.setModule(i, 6, i % 2 === 0, true);
+    }
+    this.drawFinderPattern(3, 3);
+    this.drawFinderPattern(size - 4, 3);
+    this.drawFinderPattern(3, size - 4);
+    var alignPatPos = this.getAlignmentPatternPositions();
+    for (var i = 0; i < alignPatPos.length; i++) {
+      for (var j = 0; j < alignPatPos.length; j++) {
+        if (!(i === 0 && j === 0) && !(i === 0 && j === alignPatPos.length - 1) && !(i === alignPatPos.length - 1 && j === 0)) {
+          this.drawAlignmentPattern(alignPatPos[i], alignPatPos[j]);
+        }
+      }
+    }
+    this.drawFormatBits(0);
+    this.drawVersion();
+  };
+  QrCode.prototype.drawFormatBits = function(mask) {
+    var data = (this.errorCorrectionLevel.formatBits << 3) | mask;
+    var rem = data;
+    for (var i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+    var bits = (data << 10) | rem;
+    bits ^= 0x5412;
+    for (var i = 0; i <= 5; i++) this.setModule(8, i, ((bits >>> i) & 1) !== 0, true);
+    this.setModule(8, 7, ((bits >>> 6) & 1) !== 0, true);
+    this.setModule(8, 8, ((bits >>> 7) & 1) !== 0, true);
+    this.setModule(7, 8, ((bits >>> 8) & 1) !== 0, true);
+    for (var i = 9; i < 15; i++) this.setModule(14 - i, 8, ((bits >>> i) & 1) !== 0, true);
+    var size = this.modules.length;
+    for (var i = 0; i < 8; i++) this.setModule(size - 1 - i, 8, ((bits >>> i) & 1) !== 0, true);
+    for (var i = 8; i < 15; i++) this.setModule(8, size - 15 + i, ((bits >>> i) & 1) !== 0, true);
+    this.setModule(8, size - 8, true, true);
+  };
+  QrCode.prototype.drawVersion = function() {
+    if (this.version < 7) return;
+    var rem = this.version;
+    for (var i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25);
+    var bits = (this.version << 12) | rem;
+    var size = this.modules.length;
+    for (var i = 0; i < 18; i++) {
+      var bit = ((bits >>> i) & 1) !== 0;
+      this.setModule(Math.floor(i / 3), size - 11 + i % 3, bit, true);
+      this.setModule(size - 11 + i % 3, Math.floor(i / 3), bit, true);
+    }
+  };
+  QrCode.prototype.drawFinderPattern = function(x, y) {
+    for (var dy = -4; dy <= 4; dy++) {
+      for (var dx = -4; dx <= 4; dx++) {
+        var dist = Math.max(Math.abs(dx), Math.abs(dy));
+        var xx = x + dx, yy = y + dy;
+        if (0 <= xx && xx < this.modules.length && 0 <= yy && yy < this.modules.length) {
+          this.setModule(xx, yy, dist !== 2 && dist !== 4, true);
+        }
+      }
+    }
+  };
+  QrCode.prototype.drawAlignmentPattern = function(x, y) {
+    for (var dy = -2; dy <= 2; dy++) {
+      for (var dx = -2; dx <= 2; dx++) {
+        this.setModule(x + dx, y + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1, true);
+      }
+    }
+  };
+  QrCode.prototype.setModule = function(x, y, isDark, isFunction) {
+    this.modules[y][x] = isDark;
+    if (isFunction) this.isFunction[y][x] = true;
+  };
+  QrCode.prototype.addEccAndInterleave = function(data) { return data; };
+  QrCode.prototype.getAlignmentPatternPositions = function() {
+    if (this.version === 1) return [];
+    var numAlign = Math.floor(this.version / 7) + 2;
+    var step = (this.version === 32) ? 26 : Math.ceil((this.version * 4 + 4) / (numAlign * 2 - 2)) * 2;
+    var result = [6];
+    var pos = this.modules.length - 7;
+    while (result.length < numAlign) {
+      result.splice(1, 0, pos);
+      pos -= step;
+    }
+    return result;
+  };
+  QrCode.prototype.applyMask = function(mask) {
+    var size = this.modules.length;
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) {
+        var invert = false;
+        switch (mask) {
+          case 0: invert = (x + y) % 2 === 0; break;
+          case 1: invert = y % 2 === 0; break;
+          case 2: invert = x % 3 === 0; break;
+          case 3: invert = (x + y) % 3 === 0; break;
+          case 4: invert = (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0; break;
+          case 5: invert = x * y % 2 + x * y % 3 === 0; break;
+          case 6: invert = (x * y % 2 + x * y % 3) % 2 === 0; break;
+          case 7: invert = ((x + y) % 2 + x * y % 3) % 2 === 0; break;
+        }
+        if (!this.isFunction[y][x] && invert) {
+          this.modules[y][x] = !this.modules[y][x];
+        }
+      }
+    }
+  };
+  QrCode.prototype.drawCodewords = function(data) {
+    var size = this.modules.length;
+    var i = 0;
+    var right = size - 1;
+    while (right >= 0) {
+      if (right === 6) right = 5;
+      for (var vert = 0; vert < size; vert++) {
+        for (var j = 0; j < 2; j++) {
+          var x = right - j;
+          var upward = ((right + 1) & 2) === 0;
+          var y = upward ? size - 1 - vert : vert;
+          if (!this.isFunction[y][x] && i < data.length * 8) {
+            this.modules[y][x] = ((data[i >>> 3] >>> (7 - (i & 7))) & 1) !== 0;
+            i++;
+          }
+        }
+      }
+      right -= 2;
+    }
+  };
+  QrCode.prototype.getPenaltyScore = function() {
+    var size = this.modules.length, score = 0;
+    for (var y = 0; y < size; y++) {
+      var run = 0; var prev = false;
+      for (var x = 0; x < size; x++) {
+        if (this.modules[y][x] === prev) { run++; }
+        else { if (run >= 5) score += 3 + (run - 5); run = 1; prev = this.modules[y][x]; }
+      }
+      if (run >= 5) score += 3 + (run - 5);
+    }
+    for (var x = 0; x < size; x++) {
+      var run = 0; var prev = false;
+      for (var y = 0; y < size; y++) {
+        if (this.modules[y][x] === prev) { run++; }
+        else { if (run >= 5) score += 3 + (run - 5); run = 1; prev = this.modules[y][x]; }
+      }
+      if (run >= 5) score += 3 + (run - 5);
+    }
+    for (var y = 0; y < size - 1; y++) {
+      for (var x = 0; x < size - 1; x++) {
+        if (this.modules[y][x] === this.modules[y][x + 1] &&
+            this.modules[y][x] === this.modules[y + 1][x] &&
+            this.modules[y][x] === this.modules[y + 1][x + 1]) score += 3;
+      }
+    }
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size - 6; x++) {
+        if (this.modules[y][x] && !this.modules[y][x + 1] && this.modules[y][x + 2] && this.modules[y][x + 3] && this.modules[y][x + 4] && !this.modules[y][x + 5] && this.modules[y][x + 6]) score += 40;
+      }
+    }
+    for (var y = 0; y < size - 6; y++) {
+      for (var x = 0; x < size; x++) {
+        if (this.modules[y][x] && !this.modules[y + 1][x] && this.modules[y + 2][x] && this.modules[y + 3][x] && this.modules[y + 4][x] && !this.modules[y + 5][x] && this.modules[y + 6][x]) score += 40;
+      }
+    }
+    var total = size * size;
+    var dark = 0;
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) { if (this.modules[y][x]) dark++; }
+    }
+    var percent = dark * 100 / total;
+    var prev = Math.floor(percent / 5), next = Math.ceil(percent / 5);
+    score += Math.min(Math.abs(prev * 5 - 50) / 5, Math.abs(next * 5 - 50) / 5) * 10;
+    return score;
+  };
+
+  var Ecc = { LOW: {ordinal:0,formatBits:1}, MEDIUM:{ordinal:1,formatBits:0}, QUARTILE:{ordinal:2,formatBits:3}, HIGH:{ordinal:3,formatBits:2} };
+
+  function encodeSegments(segs, ecl, minVersion, maxVersion, mask, boostEcl) {
+    if (!(QrCode.MIN_VERSION <= minVersion && minVersion <= maxVersion && maxVersion <= QrCode.MAX_VERSION) || mask < -1 || mask > 7)
+      throw 'Invalid value';
+    var version, dataUsedBits;
+    for (version = minVersion; ; version++) {
+      var dataCapacityBits = QrCode.getNumDataCodewords(version, ecl) * 8;
+      var usedBits = QrSegment.getTotalBits(segs, version);
+      if (usedBits !== undefined && usedBits <= dataCapacityBits) { dataUsedBits = usedBits; break; }
+      if (version >= maxVersion) throw 'Data too long';
+    }
+    for (var _ecl of [Ecc.MEDIUM, Ecc.QUARTILE, Ecc.HIGH]) {
+      if (boostEcl && dataUsedBits <= QrCode.getNumDataCodewords(version, _ecl) * 8) ecl = _ecl;
+    }
+    var dataCodewords = [];
+    for (var _i = 0, segs_1 = segs; _i < segs_1.length; _i++) {
+      var seg = segs_1[_i];
+      dataCodewords = dataCodewords.concat(seg.getData());
+    }
+    QrCode.addEccAndInterleave_ = function(data, version, ecl) {
+      var numDataCodewords = QrCode.getNumDataCodewords(version, ecl);
+      data = data.slice(0, numDataCodewords);
+      var eccCodewords = QrCode.reedSolomonComputeRemainder(data, QrCode.reedSolomonComputeDivisor(QrCode.getNumRawDataModules(version) / 8 - numDataCodewords));
+      return data.concat(eccCodewords);
+    };
+    var allCodewords = QrCode.addEccAndInterleave_(dataCodewords, version, ecl);
+    var qr = new QrCode(version, ecl, dataCodewords, mask);
+    qr.addEccAndInterleave = function(data) { return allCodewords.slice(data.length); };
+    qr.drawCodewords(allCodewords);
+    return qr;
+  }
+  QrCode.encodeText = function(text, ecl) {
+    var segs = QrSegment.makeSegments(text);
+    return encodeSegments(segs, ecl || Ecc.LOW, QrCode.MIN_VERSION, QrCode.MAX_VERSION, -1, true);
+  };
+  QrCode.toSvgString = function(qr, border, lightColor, darkColor) {
+    if (border === void 0) border = 4;
+    if (lightColor === void 0) lightColor = '#FFFFFF';
+    if (darkColor === void 0) darkColor = '#000000';
+    var size = qr.modules.length;
+    var dim = size + border * 2;
+    var parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + dim + ' ' + dim + '" width="' + dim + '" height="' + dim + '">'];
+    parts.push('<rect width="100%" height="100%" fill="' + lightColor + '"/>');
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) {
+        if (qr.modules[y][x]) {
+          parts.push('<rect x="' + (x + border) + '" y="' + (y + border) + '" width="1" height="1" fill="' + darkColor + '"/>');
+        }
+      }
+    }
+    parts.push('</svg>');
+    return parts.join('');
+  };
+  QrCode.MIN_VERSION = 1;
+  QrCode.MAX_VERSION = 40;
+  QrCode.getNumRawDataModules = function(ver) { var s = ver * 4 + 17; return s * s - 8 * 8 * 3 - (s - 16) * 2 * 15 - (s >= 44 ? (ver - 7) * (ver - 7) * 25 - 10 * (ver - 7) - 50 : 0); };
+  QrCode.getNumDataCodewords = function(ver, ecl) {
+    var eccPerBlockTable = [
+      [-1,7,10,15,20,26,18,20,24,30,18,20,24,26,30,22,24,28,30,28,28,28,28,30,30,26,28,30,30,30,30,30,30,30,30,30,30,30,30,30],
+      [-1,10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26,26,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28],
+      [-1,13,22,18,26,18,24,18,22,20,24,28,26,24,20,30,24,28,28,26,30,28,30,30,30,30,28,30,30,30,30,30,30,30,30,30,30,30,30,30],
+      [-1,17,28,22,16,22,28,26,26,24,28,24,28,22,24,24,30,28,28,26,28,30,24,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30]
+    ];
+    var numBlocks = [
+      [-1,1,1,1,1,1,2,2,2,2,4,4,4,4,4,6,6,6,6,7,8,8,9,9,10,12,12,12,13,14,15,16,17,18,19,19,20,21,22,24],
+      [-1,1,1,1,2,2,4,4,4,5,5,5,8,9,9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,31,33,35,37,38,40,43,45,47],
+      [-1,1,1,2,2,4,4,6,6,8,8,8,10,12,16,12,17,16,18,21,20,23,23,25,27,29,34,34,35,38,40,43,45,48,51,53,56,59,62,65],
+      [-1,1,1,2,4,4,4,5,6,8,8,11,11,16,16,18,16,19,21,25,25,25,34,30,32,35,37,40,42,45,48,51,54,57,60,63,66,70,74,77]
+    ];
+    var b = numBlocks[ecl.ordinal][ver];
+    var e = eccPerBlockTable[ecl.ordinal][ver];
+    var raw = QrCode.getNumRawDataModules(ver);
+    var total = raw / 8;
+    return total - e * b;
+  };
+  QrCode.reedSolomonComputeDivisor = function(degree) {
+    var result = [1];
+    for (var i = 0; i < degree; i++) {
+      result.push(0);
+      for (var j = result.length - 1; j > 0; j--) {
+        result[j] = QrCode.reedSolomonMultiply(result[j], QrCode.reedSolomonExp(i));
+        result[j] ^= result[j - 1];
+      }
+      result[0] = QrCode.reedSolomonMultiply(result[0], QrCode.reedSolomonExp(i));
+    }
+    return result;
+  };
+  QrCode.reedSolomonComputeRemainder = function(data, divisor) {
+    var result = [];
+    for (var i = 0; i < divisor.length; i++) result.push(0);
+    for (var _i = 0, data_1 = data; _i < data_1.length; _i++) {
+      var b = data_1[_i];
+      var factor = b ^ result.shift();
+      result.push(0);
+      for (var i = 0; i < result.length; i++)
+        result[i] ^= QrCode.reedSolomonMultiply(divisor[i], factor);
+    }
+    return result;
+  };
+  QrCode.reedSolomonExp = (function() {
+    var expTable = [1];
+    for (var i = 1; i < 256; i++) {
+      var x = expTable[i - 1] * 2;
+      if (x >= 256) x ^= 0x11D;
+      expTable.push(x);
+    }
+    return function(x) { return expTable[x % 255]; };
+  })();
+  QrCode.reedSolomonMultiply = function(x, y) {
+    if (x === 0 || y === 0) return 0;
+    var logTable = (function() {
+      var t = [0];
+      for (var i = 1; i < 256; i++) t[QrCode.reedSolomonExp(i)] = i;
+      return t;
+    })();
+    return QrCode.reedSolomonExp((logTable[x] + logTable[y]) % 255);
+  };
+
+  var QrSegment = (function() {
+    function QrSegment(mode, numChars, bitData) {
+      this.mode = mode; this.numChars = numChars; this.bitData = bitData;
+    }
+    QrSegment.makeBytes = function(data) {
+      var bb = [];
+      for (var _i = 0, data_2 = data; _i < data_2.length; _i++) {
+        var b = data_2[_i];
+        for (var j = 7; j >= 0; j--) bb.push((b >>> j) & 1);
+      }
+      return new QrSegment(Mode.BYTE, data.length, bb);
+    };
+    QrSegment.makeNumeric = function(digits) {
+      var bb = [];
+      for (var i = 0; i < digits.length; ) {
+        var n = Math.min(digits.length - i, 3);
+        var val = parseInt(digits.substring(i, i + n), 10);
+        var bitLen = n === 3 ? 10 : n === 2 ? 7 : 4;
+        for (var j = bitLen - 1; j >= 0; j--) bb.push((val >>> j) & 1);
+        i += n;
+      }
+      return new QrSegment(Mode.NUMERIC, digits.length, bb);
+    };
+    QrSegment.makeAlphanumeric = function(text) {
+      var ALPHA = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+      var bb = [];
+      for (var i = 0; i < text.length; ) {
+        var idx1 = ALPHA.indexOf(text.charAt(i));
+        if (idx1 < 0) throw 'Invalid character';
+        if (i + 1 < text.length) {
+          var idx2 = ALPHA.indexOf(text.charAt(i + 1));
+          if (idx2 >= 0) {
+            var val = idx1 * 45 + idx2;
+            for (var j = 10; j >= 0; j--) bb.push((val >>> j) & 1);
+            i += 2;
+            continue;
+          }
+        }
+        for (var j = 5; j >= 0; j--) bb.push((idx1 >>> j) & 1);
+        i += 1;
+      }
+      return new QrSegment(Mode.ALPHANUMERIC, text.length, bb);
+    };
+    QrSegment.makeSegments = function(text) {
+      var isNumeric = /^[0-9]+$/.test(text);
+      if (isNumeric) return [QrSegment.makeNumeric(text)];
+      var isAlpha = true;
+      var ALPHA_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+      for (var i = 0; i < text.length; i++) {
+        if (ALPHA_CHARS.indexOf(text.charAt(i)) < 0) { isAlpha = false; break; }
+      }
+      if (isAlpha) return [QrSegment.makeAlphanumeric(text)];
+      var bytes = [];
+      for (var i = 0; i < text.length; i++) {
+        var c = text.charCodeAt(i);
+        if (c < 128) bytes.push(c);
+        else if (c < 2048) { bytes.push(0xC0 | (c >>> 6)); bytes.push(0x80 | (c & 0x3F)); }
+        else { bytes.push(0xE0 | (c >>> 12)); bytes.push(0x80 | ((c >>> 6) & 0x3F)); bytes.push(0x80 | (c & 0x3F)); }
+      }
+      return [QrSegment.makeBytes(bytes)];
+    };
+    QrSegment.getTotalBits = function(segs, version) {
+      var result = 0;
+      for (var _i = 0, segs_2 = segs; _i < segs_2.length; _i++) {
+        var seg = segs_2[_i];
+        var ccbits = seg.mode.numCharCountBits(version);
+        if (seg.numChars >= (1 << ccbits)) return undefined;
+        result += 4 + ccbits + seg.bitData.length;
+      }
+      return result;
+    };
+    QrSegment.prototype.getData = function() {
+      var result = [];
+      for (var i = 0; i < this.bitData.length; i += 8) {
+        var b = 0;
+        for (var j = 0; j < 8 && i + j < this.bitData.length; j++) b |= this.bitData[i + j] << (7 - j);
+        result.push(b);
+      }
+      return result;
+    };
+    var Mode = (function() {
+      function Mode(modeBits, charCountBits) {
+        this.modeBits = modeBits;
+        this.numBitsCharCount = charCountBits;
+      }
+      Mode.prototype.numCharCountBits = function(ver) {
+        var offsets = [0, 10, 9, 8];
+        var idx = ver <= 9 ? 0 : ver <= 26 ? 1 : 2;
+        return this.numBitsCharCount[idx] || offsets[idx];
+      };
+      Mode.NUMERIC = new Mode(0x1, [10, 12, 14]);
+      Mode.ALPHANUMERIC = new Mode(0x2, [9, 11, 13]);
+      Mode.BYTE = new Mode(0x4, [8, 16, 16]);
+      return Mode;
+    })();
+    return QrSegment;
+  })();
+
+  return {
+    encodeText: QrCode.encodeText,
+    toSvgString: QrCode.toSvgString
+  };
+})();
+
+// ============ QR Code Share Modal ============
+function showQrModal(inviteCode) {
+  var baseUrl = window.location.origin + window.location.pathname;
+  var joinUrl = baseUrl + '?join=' + inviteCode;
+
+  // Remove existing modal
+  var existing = document.querySelector('.qr-modal-overlay');
+  if (existing) existing.remove();
+
+  var qr;
+  try {
+    qr = qrcodegen.encodeText(joinUrl, qrcodegen.Ecc ? qrcodegen.Ecc.LOW : undefined);
+  } catch(e) {
+    // Fallback: use manual approach
+    qr = qrcodegen.encodeText(joinUrl);
+  }
+  var svg = qrcodegen.toSvgString(qr, 3, '#FFFFFF', '#333333');
+
+  var overlay = document.createElement('div');
+  overlay.className = 'qr-modal-overlay';
+  overlay.innerHTML =
+    '<div class="qr-modal">' +
+      '<div class="qr-modal-title">📱 扫码加入家庭</div>' +
+      '<div class="qr-modal-sub">让家人用手机扫描二维码加入</div>' +
+      '<div class="qr-modal-code">' + svg + '</div>' +
+      '<div class="qr-invite-text">' + inviteCode + '</div>' +
+      '<div class="qr-modal-actions">' +
+        '<button class="qr-modal-btn primary" id="qr-copy-link">📋 复制链接</button>' +
+        '<button class="qr-modal-btn secondary" id="qr-close">关闭</button>' +
+      '</div>' +
+    '</div>';
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.remove();
+    if (e.target.matches('#qr-close')) overlay.remove();
+    if (e.target.matches('#qr-copy-link')) {
+      navigator.clipboard.writeText(joinUrl).then(
+        function() { showToast('链接已复制，发给家人即可加入', 'success'); },
+        function() { showToast('复制失败，请手动分享邀请码: ' + inviteCode, 'none'); }
+      );
+    }
+  });
+
+  document.body.appendChild(overlay);
+}
+
+// ============ QR Scanner (BarcodeDetector API + camera fallback) ============
+var scannerStream = null;
+function openScanner() {
+  // Check for BarcodeDetector API (Chrome 83+ on Android)
+  if ('BarcodeDetector' in window) {
+    openBarcodeScanner();
+  } else {
+    // Fallback: use camera to show viewfinder, user scans with phone's native camera
+    showToast('请用手机相机扫描家人分享的二维码', 'none');
+    // Open a scanner-like UI anyway to hint the user
+    openCameraViewfinder();
+  }
+}
+
+function openBarcodeScanner() {
+  var overlay = document.createElement('div');
+  overlay.className = 'scanner-overlay';
+  overlay.id = 'scanner-overlay';
+  overlay.innerHTML =
+    '<div class="scanner-viewport" id="scanner-viewport">' +
+      '<div class="scanner-frame"></div>' +
+      '<video id="scanner-video" autoplay playsinline></video>' +
+    '</div>' +
+    '<div class="scanner-hint">将二维码对准框内</div>' +
+    '<button class="scanner-close-btn" id="scanner-close">取消</button>';
+  document.body.appendChild(overlay);
+
+  var video = document.getElementById('scanner-video');
+  var detector = new BarcodeDetector({ formats: ['qr_code'] });
+  var scanning = true;
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(stream) {
+    scannerStream = stream;
+    video.srcObject = stream;
+    video.play();
+
+    function scan() {
+      if (!scanning) return;
+      detector.detect(video).then(function(barcodes) {
+        if (barcodes.length > 0) {
+          scanning = false;
+          stopScanner();
+          var code = barcodes[0].rawValue;
+          handleScannedCode(code);
+        } else {
+          requestAnimationFrame(scan);
+        }
+      }).catch(function() {
+        requestAnimationFrame(scan);
+      });
+    }
+    requestAnimationFrame(scan);
+  }).catch(function() {
+    stopScanner();
+    showToast('无法访问相机，请手动输入邀请码', 'none');
+  });
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target.matches('#scanner-close') || e.target === overlay) {
+      stopScanner();
+    }
+  });
+}
+
+function openCameraViewfinder() {
+  var overlay = document.createElement('div');
+  overlay.className = 'scanner-overlay';
+  overlay.id = 'scanner-overlay';
+  overlay.innerHTML =
+    '<div class="scanner-viewport" id="scanner-viewport">' +
+      '<div class="scanner-frame"></div>' +
+      '<video id="scanner-video" autoplay playsinline></video>' +
+    '</div>' +
+    '<div class="scanner-hint">将家人分享的二维码对准框内<br><small>或使用手机相机 App 扫描</small></div>' +
+    '<button class="scanner-close-btn" id="scanner-close">取消</button>';
+  document.body.appendChild(overlay);
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(stream) {
+    scannerStream = stream;
+    var video = document.getElementById('scanner-video');
+    if (video) { video.srcObject = stream; video.play(); }
+  }).catch(function() {
+    // Camera not available - that's OK, just show the hint
+  });
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target.matches('#scanner-close') || e.target === overlay) {
+      stopScanner();
+    }
+  });
+}
+
+function stopScanner() {
+  if (scannerStream) {
+    scannerStream.getTracks().forEach(function(t) { t.stop(); });
+    scannerStream = null;
+  }
+  var overlay = document.getElementById('scanner-overlay');
+  if (overlay) overlay.remove();
+}
+
+function handleScannedCode(rawValue) {
+  // Extract invite code from URL: ...?join=XXXXXX or just XXXXXX
+  var code = rawValue;
+  try {
+    var url = new URL(rawValue);
+    code = url.searchParams.get('join') || rawValue;
+  } catch(e) {
+    // Not a URL, try as raw code
+    if (/^[A-Z0-9]{6}$/i.test(rawValue)) code = rawValue;
+  }
+
+  if (code && code.length === 6) {
+    var result = joinFamily(code);
+    if (result.success) {
+      showToast('成功加入家庭「' + result.name + '」', 'success');
+      setTimeout(function() { navigateTo('family'); }, 500);
+    } else {
+      showToast(result.error, 'none');
+    }
+  } else {
+    showToast('未识别到有效邀请码', 'none');
+  }
+}
+
+// ============ Handle ?join= URL param on load ============
+function checkJoinParam() {
+  var params = new URLSearchParams(window.location.search);
+  var joinCode = params.get('join');
+  if (joinCode && joinCode.length === 6) {
+    // Delay to let app initialize first
+    setTimeout(function() {
+      var result = joinFamily(joinCode);
+      if (result.success) {
+        showToast('成功加入家庭「' + result.name + '」', 'success');
+        // Navigate to family tab
+        navigateTo('family');
+      } else {
+        showToast(result.error, 'none');
+      }
+    }, 800);
+  }
+}
+
+</script>
+</body>
+</html>
