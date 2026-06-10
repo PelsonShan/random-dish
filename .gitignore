@@ -1,4 +1,28 @@
-.DS_Store
-*.log
+### Java / Maven ###
+target/
+*.class
+*.jar
+*.war
+
+### Node ###
 node_modules/
-bundle.js
+dist/
+npm-debug.log*
+
+### IDE ###
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Project ###
+uploads/
+*.log
+.env
+.env.local
+!.env.example

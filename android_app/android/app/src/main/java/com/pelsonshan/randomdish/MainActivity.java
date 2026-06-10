@@ -1,5 +1,0 @@
-package com.pelsonshan.randomdish;
-
-import com.getcapacitor.BridgeActivity;
-
-public class MainActivity extends BridgeActivity {}

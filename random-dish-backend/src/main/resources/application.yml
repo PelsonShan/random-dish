@@ -1,0 +1,50 @@
+server:
+  port: ${PORT:81}
+  undertow:
+    io-threads: 4
+    worker-threads: 32
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    name: random-dish
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:random_dish}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+mybatis-plus:
+  global-config:
+    db-config:
+      id-type: AUTO
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+app:
+  upload-dir: ${UPLOAD_DIR:uploads}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.randomdish: DEBUG
